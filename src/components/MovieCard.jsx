@@ -1,22 +1,48 @@
-function MovieCard({ pelicula, modo, onMarcarVista, onAbandonar, onAgregar, yaGuardada, procesando }) {
+import { generarPosterRespaldo } from '../services/tmdb';
+
+function MovieCard({
+  pelicula,
+  modo,
+  onMarcarVista,
+  onAbandonar,
+  onAgregar,
+  onSeleccionarPelicula,
+  yaGuardada,
+  procesando,
+}) {
+  const abrirDetalle = () => {
+    if (onSeleccionarPelicula) {
+      onSeleccionarPelicula(pelicula);
+    }
+  };
+
   return (
     <article className="movie-card">
-      <div className="movie-poster-wrapper">
+      <div
+        className="movie-poster-wrapper clickable-poster"
+        onClick={abrirDetalle}
+        title="Tocar para ver ficha completa"
+      >
         <img
-          src={pelicula.poster}
+          src={pelicula.poster || generarPosterRespaldo(pelicula.titulo)}
           alt={pelicula.titulo}
           className="movie-poster"
           loading="lazy"
+          referrerPolicy="no-referrer"
           onError={(e) => {
-            e.target.src = 'https://via.placeholder.com/500x750/121015/EAB308?text=PELICULO';
+            e.target.onerror = null;
+            e.target.src = generarPosterRespaldo(pelicula.titulo);
           }}
         />
         {pelicula.anio && <span className="movie-year-badge">{pelicula.anio}</span>}
+        <span className="movie-info-hint">Ver info</span>
       </div>
 
       <div className="movie-card-body">
-        <h3 className="movie-title">{pelicula.titulo}</h3>
-        {pelicula.genero && <p className="movie-genre">{pelicula.genero}</p>}
+        <div onClick={abrirDetalle} className="movie-title-click">
+          <h3 className="movie-title">{pelicula.titulo}</h3>
+          {pelicula.genero && <p className="movie-genre">{pelicula.genero}</p>}
+        </div>
 
         {modo === 'mesa_de_luz' && (
           <div className="movie-actions">

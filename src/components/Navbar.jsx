@@ -1,6 +1,13 @@
 import { useState } from 'react';
 
-function Navbar({ vistaActual, setVistaActual, abrirModalMenu, cerrarSesionUsuario, cantidadCajon }) {
+function Navbar({
+  vistaActual,
+  setVistaActual,
+  abrirModalMenu,
+  cerrarSesionUsuario,
+  esUsuarioRegistrado,
+  abrirModalBienvenida,
+}) {
   const [menuAbierto, setMenuAbierto] = useState(false);
 
   const navegarA = (vista) => {
@@ -17,11 +24,6 @@ function Navbar({ vistaActual, setVistaActual, abrirModalMenu, cerrarSesionUsuar
     <header className="navbar">
       <div className="navbar-left" onClick={() => navegarA('home')}>
         <span className="brand-logo">PELICULO :V</span>
-        {cantidadCajon > 0 && (
-          <span className="cajon-pill" title="Películas ocultas en el Cajón de Espera">
-            +{cantidadCajon} en cajón oculto
-          </span>
-        )}
       </div>
 
       <nav className="navbar-links">
@@ -41,21 +43,24 @@ function Navbar({ vistaActual, setVistaActual, abrirModalMenu, cerrarSesionUsuar
           Descubrir
         </button>
 
-        <div className="perfil-dropdown-wrapper">
+        <button
+          type="button"
+          className={`nav-btn ${vistaActual === 'perfil' ? 'active' : ''}`}
+          onClick={() => navegarA('perfil')}
+        >
+          Perfil
+        </button>
+
+        {/* Ícono de Configuración independiente (fuera de Perfil) */}
+        <div className="config-dropdown-wrapper">
           <button
             type="button"
-            className={`nav-btn ${vistaActual === 'perfil' ? 'active' : ''}`}
-            onClick={() => navegarA('perfil')}
-          >
-            Perfil
-          </button>
-          <button
-            type="button"
-            className="dropdown-toggle-btn"
+            className="config-icon-btn"
             onClick={() => setMenuAbierto(!menuAbierto)}
-            aria-label="Abrir menú de perfil"
+            aria-label="Abrir menú de configuración"
+            title="Configuración y opciones"
           >
-            ▾
+            ⚙️
           </button>
 
           {menuAbierto && (
@@ -69,16 +74,30 @@ function Navbar({ vistaActual, setVistaActual, abrirModalMenu, cerrarSesionUsuar
               <button type="button" onClick={() => seleccionarOpcionMenu('sos')}>
                 SOS
               </button>
-              <button
-                type="button"
-                className="logout-option"
-                onClick={() => {
-                  setMenuAbierto(false);
-                  cerrarSesionUsuario();
-                }}
-              >
-                Cerrar sesión
-              </button>
+
+              {!esUsuarioRegistrado ? (
+                <button
+                  type="button"
+                  className="login-option"
+                  onClick={() => {
+                    setMenuAbierto(false);
+                    abrirModalBienvenida();
+                  }}
+                >
+                  Iniciar sesión / Registrarse
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="logout-option"
+                  onClick={() => {
+                    setMenuAbierto(false);
+                    cerrarSesionUsuario();
+                  }}
+                >
+                  Cerrar sesión
+                </button>
+              )}
             </div>
           )}
         </div>

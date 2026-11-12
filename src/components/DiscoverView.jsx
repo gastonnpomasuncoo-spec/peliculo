@@ -1,21 +1,23 @@
-import { useState, useEffect } from 'react';
-import { obtenerCatalogoTMDB, buscarPeliculasTMDB } from '../services/tmdb';
+import { useState, useEffect, useRef } from 'react';
+import {
+  obtenerCatalogoTMDB,
+  buscarPeliculasTMDB,
+  SUGERENCIAS_MAS_BUSCADAS,
+} from '../services/tmdb';
 import MovieCard from './MovieCard';
 
 function DiscoverView({
   peliculasUsuario,
   onAgregarPelicula,
+  onSeleccionarPelicula,
   generoPreferido,
   procesando,
 }) {
   const [catalogo, setCatalogo] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
-
-  const [mostrarFormManual, setMostrarFormManual] = useState(false);
-  const [tituloManual, setTituloManual] = useState('');
-  const [generoManual, setGeneroManual] = useState('Ciencia Ficción');
-  const [anioManual, setAnioManual] = useState('2024');
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+  const contenedorBuscadorRef = useRef(null);
 
   useEffect(() => {
     let activo = true;
@@ -30,30 +32,32 @@ function DiscoverView({
     };
   }, []);
 
-  const ejecutarBusqueda = async (e) => {
-    e.preventDefault();
+  // Cierra el dropdown de sugerencias al hacer clic afuera
+  useEffect(() => {
+    const manejarClickAfuera = (e) => {
+      if (
+        contenedorBuscadorRef.current &&
+        !contenedorBuscadorRef.current.contains(e.target)
+      ) {
+        setMostrarSugerencias(false);
+      }
+    };
+    document.addEventListener('mousedown', manejarClickAfuera);
+    return () => document.removeEventListener('mousedown', manejarClickAfuera);
+  }, []);
+
+  const ejecutarBusqueda = async (terminoManual) => {
+    const texto = typeof terminoManual === 'string' ? terminoManual : busqueda;
+    setMostrarSugerencias(false);
     setCargandoCatalogo(true);
-    const resultados = await buscarPeliculasTMDB(busqueda);
+    const resultados = await buscarPeliculasTMDB(texto);
     setCatalogo(resultados);
     setCargandoCatalogo(false);
   };
 
-  const agregarManual = async (e) => {
-    e.preventDefault();
-    if (!tituloManual.trim()) return;
-
-    await onAgregarPelicula({
-      tmdbId: Date.now(),
-      titulo: tituloManual.trim(),
-      anio: anioManual.trim() || '2024',
-      genero: generoManual,
-      duracion: 120,
-      poster: 'https://via.placeholder.com/500x750/121015/EAB308?text=' + encodeURIComponent(tituloManual.trim()),
-      sinopsis: 'Película agregada manualmente por el usuario.',
-    });
-
-    setTituloManual('');
-    setMostrarFormManual(false);
+  const elegirSugerencia = (sugerencia) => {
+    setBusqueda(sugerencia);
+    ejecutarBusqueda(sugerencia);
   };
 
   const estaGuardada = (peliculaCat) =>
@@ -72,68 +76,68 @@ function DiscoverView({
 
   return (
     <section className="view-container">
-      {/* Barra de búsqueda centrada como en Descubrir.jpg */}
-      <form onSubmit={ejecutarBusqueda} className="search-bar-container">
-        <div className="search-input-wrapper">
-          <input
-            type="text"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar películas en el catálogo TMDB..."
-            className="search-input"
-          />
-          <button type="submit" className="search-icon-btn" aria-label="Buscar">
-            🔍
-          </button>
-        </div>
-        <button
-          type="button"
-          className="btn-secondary btn-sm"
-          onClick={() => setMostrarFormManual(!mostrarFormManual)}
+      {/* Barra de búsqueda sin sugerencias nativas + Dropdown de lo más buscado */}
+      <div className="search-bar-container" ref={contenedorBuscadorRef}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            ejecutarBusqueda(busqueda);
+          }}
+          className="search-form-dropdown-wrap"
+          autoComplete="off"
         >
-          {mostrarFormManual ? 'Cerrar carga manual' : '+ Cargar título manual'}
-        </button>
-      </form>
-
-      {mostrarFormManual && (
-        <form onSubmit={agregarManual} className="manual-form-card">
-          <h3 className="box-title">Agregar película manualmente</h3>
-          <div className="manual-form-grid">
+          <div className="search-input-wrapper">
             <input
               type="text"
-              value={tituloManual}
-              onChange={(e) => setTituloManual(e.target.value)}
-              placeholder="Título de la película"
-              className="form-input"
-              required
+              name="buscador_peliculo_off"
+              autoComplete="off"
+              value={busqueda}
+              onFocus={() => setMostrarSugerencias(true)}
+              onChange={(e) => {
+                setBusqueda(e.target.value);
+                setMostrarSugerencias(true);
+              }}
+              placeholder="Buscar películas, directores o géneros..."
+              className="search-input"
             />
-            <select
-              value={generoManual}
-              onChange={(e) => setGeneroManual(e.target.value)}
-              className="form-input"
-            >
-              <option value="Ciencia Ficción">Ciencia Ficción</option>
-              <option value="Thriller / Drama">Thriller / Drama</option>
-              <option value="Drama / Fantasía">Drama / Fantasía</option>
-              <option value="Acción">Acción</option>
-            </select>
-            <input
-              type="text"
-              maxLength="4"
-              value={anioManual}
-              onChange={(e) => setAnioManual(e.target.value.replace(/\D/g, ''))}
-              placeholder="Año (ej. 2024)"
-              className="form-input"
-            />
-            <button type="submit" className="btn-accent" disabled={procesando}>
-              Guardar
+            {busqueda && (
+              <button
+                type="button"
+                className="clear-search-btn"
+                onClick={() => {
+                  setBusqueda('');
+                  ejecutarBusqueda('');
+                }}
+              >
+                ✕
+              </button>
+            )}
+            <button type="submit" className="search-icon-btn" aria-label="Buscar">
+              🔍
             </button>
           </div>
+
+          {mostrarSugerencias && (
+            <div className="search-suggestions-dropdown">
+              <span className="suggestions-header">🔥 Lo más buscado en Peliculo</span>
+              {SUGERENCIAS_MAS_BUSCADAS.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className="suggestion-item-btn"
+                  onClick={() => elegirSugerencia(item)}
+                >
+                  <span>🔍 {item}</span>
+                  <span className="suggestion-arrow">↗</span>
+                </button>
+              ))}
+            </div>
+          )}
         </form>
-      )}
+      </div>
 
       {cargandoCatalogo ? (
-        <div className="loading-box">Cargando catálogo de TMDB...</div>
+        <div className="loading-box">Cargando catálogo completo de películas...</div>
       ) : (
         <>
           {peliculasCienciaFiccion.length > 0 && (
@@ -150,6 +154,7 @@ function DiscoverView({
                     yaGuardada={estaGuardada(peli)}
                     procesando={procesando}
                     onAgregar={onAgregarPelicula}
+                    onSeleccionarPelicula={onSeleccionarPelicula}
                   />
                 ))}
               </div>
@@ -158,7 +163,7 @@ function DiscoverView({
 
           {peliculasOtras.length > 0 && (
             <div className="catalog-category-block">
-              <h2 className="category-heading">Destacadas y Recomendadas</h2>
+              <h2 className="category-heading">Catálogo Completo y Aclamadas</h2>
               <div className="catalog-grid">
                 {peliculasOtras.map((peli) => (
                   <MovieCard
@@ -168,6 +173,7 @@ function DiscoverView({
                     yaGuardada={estaGuardada(peli)}
                     procesando={procesando}
                     onAgregar={onAgregarPelicula}
+                    onSeleccionarPelicula={onSeleccionarPelicula}
                   />
                 ))}
               </div>
