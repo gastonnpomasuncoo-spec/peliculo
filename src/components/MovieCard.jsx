@@ -40,8 +40,10 @@ function MovieCard({
 
       <div className="movie-card-body">
         <div onClick={abrirDetalle} className="movie-title-click">
-          <h3 className="movie-title">{pelicula.titulo}</h3>
-          {pelicula.genero && <p className="movie-genre">{pelicula.genero}</p>}
+          <h3 className="movie-title" title={pelicula.titulo}>
+            {pelicula.titulo}
+          </h3>
+          <p className="movie-genre">{pelicula.genero || 'Película'}</p>
         </div>
 
         {modo === 'mesa_de_luz' && (

@@ -18,21 +18,17 @@ function HomeView({
   procesando,
 }) {
   const [modalAccion, setModalAccion] = useState(null);
-  // Estrellas arrancan por default en 0
   const [puntaje, setPuntaje] = useState(0);
   const [comentario, setComentario] = useState('');
   const [motivoAbandono, setMotivoAbandono] = useState('Me aburrió a los 30 min');
 
-  // Popup del Cajón Oculto al lado de la Mesa de Luz
   const [popupCajonAbierto, setPopupCajonAbierto] = useState(false);
 
-  // Formulario para SUMAR un nuevo objetivo
   const [nombreNuevoObj, setNombreNuevoObj] = useState('');
   const [metaInput, setMetaInput] = useState('');
   const [plazoMeses, setPlazoMeses] = useState(2);
   const [errorObjetivo, setErrorObjetivo] = useState('');
 
-  // Modal para EDITAR un objetivo existente (como el Anual de 50 pelis)
   const [objetivoEditando, setObjetivoEditando] = useState(null);
   const [editMeta, setEditMeta] = useState('');
   const [editPlazo, setEditPlazo] = useState(12);
@@ -53,7 +49,9 @@ function HomeView({
     }
 
     onAgregarObjetivo({
-      titulo: nombreNuevoObj.trim() || `Objetivo de ${plazoMeses} ${plazoMeses === 1 ? 'mes' : 'meses'}`,
+      titulo:
+        nombreNuevoObj.trim() ||
+        `Objetivo de ${plazoMeses} ${plazoMeses === 1 ? 'mes' : 'meses'}`,
       cantidadMeta: numero,
       plazoMeses: Number(plazoMeses),
     });
@@ -119,7 +117,7 @@ function HomeView({
         </div>
       </div>
 
-      {/* FILA DE LA MESA DE LUZ (3 SLOTS) + CAJÓN OCULTO AL LADO */}
+      {/* MESA DE LUZ (3 SLOTS DE IGUAL ALTURA) + CAJÓN OCULTO CUADRADO Y COMPACTO */}
       <div className="mesa-y-cajon-layout">
         <div className="mesa-de-luz-grid">
           {slots.map((index) => {
@@ -153,7 +151,6 @@ function HomeView({
           })}
         </div>
 
-        {/* CAJÓN OCULTO AL LADO DE LA MESA DE LUZ */}
         <aside
           className="cajon-oculto-sidecard"
           onClick={() => setPopupCajonAbierto(true)}
@@ -162,17 +159,14 @@ function HomeView({
           <div className="cajon-icon-circle">🔒</div>
           <h3 className="cajon-side-title">Cajón Oculto</h3>
           <span className="cajon-count-badge">
-            {cantidadCajon} {cantidadCajon === 1 ? 'película en espera' : 'películas en espera'}
+            {cantidadCajon} en espera
           </span>
-          <p className="cajon-side-hint">Tocá para saber cómo desbloquearlas</p>
         </aside>
       </div>
 
-      {/* SECCIÓN TUS OBJETIVOS */}
       <div className="objetivos-section">
         <h2 className="section-title">Tus objetivos</h2>
 
-        {/* Avisos de objetivos cuyo plazo ya terminó */}
         {avisosObjetivosVencidos.length > 0 && (
           <div className="vencidos-alerts-stack">
             {avisosObjetivosVencidos.map((aviso) => (
@@ -205,13 +199,15 @@ function HomeView({
         )}
 
         <div className="objetivos-grid">
-          {/* Cuadro 1: Listado de Objetivos Activos (Objetivo Anual de 50 pelis editable + los que el usuario sume) */}
           <div className="objetivo-box">
             <h3 className="box-title">Objetivos en Curso ({objetivosActivos.length})</h3>
 
             <div className="objetivos-activos-lista">
               {objetivosActivos.map((obj) => {
-                const progreso = Math.min(100, Math.round((peliculasVistasCount / obj.cantidadMeta) * 100));
+                const progreso = Math.min(
+                  100,
+                  Math.round((peliculasVistasCount / obj.cantidadMeta) * 100)
+                );
                 const diasRestantes = obj.fechaFin
                   ? Math.max(1, Math.ceil((obj.fechaFin - Date.now()) / (1000 * 60 * 60 * 24)))
                   : obj.plazoMeses * 30;
@@ -221,10 +217,12 @@ function HomeView({
                     <div className="objetivo-item-header">
                       <div>
                         <h4 className="objetivo-item-title">
-                          {obj.titulo} {obj.esInicial && <span className="tag-inicial">Inicial</span>}
+                          {obj.titulo}{' '}
+                          {obj.esInicial && <span className="tag-inicial">Inicial</span>}
                         </h4>
                         <p className="objetivo-plazo">
-                          Plazo: {obj.plazoMeses} {obj.plazoMeses === 1 ? 'mes' : 'meses'} · Quedan ~{diasRestantes} días
+                          Plazo: {obj.plazoMeses} {obj.plazoMeses === 1 ? 'mes' : 'meses'} ·
+                          Quedan ~{diasRestantes} días
                         </p>
                       </div>
                       <div className="objetivo-item-actions">
@@ -239,7 +237,7 @@ function HomeView({
                           type="button"
                           className="btn-outline-danger btn-xs"
                           onClick={() => onSimularFinPlazoObjetivo(obj)}
-                          title="Simular que terminó el plazo para probar el cartel de aviso"
+                          title="Simular que terminó el plazo"
                         >
                           ⏱ Finalizar plazo
                         </button>
@@ -247,7 +245,8 @@ function HomeView({
                     </div>
 
                     <p className="objetivo-counter">
-                      Vas <strong>{peliculasVistasCount}</strong> películas de <strong>{obj.cantidadMeta}</strong>
+                      Vas <strong>{peliculasVistasCount}</strong> películas de{' '}
+                      <strong>{obj.cantidadMeta}</strong>
                     </p>
 
                     <div className="progress-bar-outer">
@@ -260,7 +259,6 @@ function HomeView({
             </div>
           </div>
 
-          {/* Cuadro 2: Sumar un nuevo Objetivo Personalizado sin reemplazar los anteriores */}
           <div className="objetivo-box">
             <h3 className="box-title">Sumar Nuevo Objetivo Personalizado</h3>
             <p className="modal-helper">
@@ -318,7 +316,6 @@ function HomeView({
         </div>
       </div>
 
-      {/* POPUP DEL CAJÓN OCULTO */}
       {popupCajonAbierto && (
         <div className="modal-backdrop" onClick={() => setPopupCajonAbierto(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -327,7 +324,7 @@ function HomeView({
               “Mirá tu mesa de luz para desbloquear más películas”
             </p>
             <p className="modal-helper">
-              Para evitar que acumules una lista eterna que nunca ves, las películas extras quedan guardadas en este cajón secreto. Cuando marques una de las 3 películas de tu Mesa de Luz como <strong>Vista</strong> o la <strong>Deseches</strong>, la siguiente película más antigua subirá automáticamente.
+              Las películas extras quedan guardadas en este cajón secreto para evitar el ruido visual. Cuando marques una de las 3 películas de tu Mesa de Luz como <strong>Vista</strong> o la <strong>Deseches</strong>, la siguiente película más antigua subirá automáticamente.
             </p>
             <div className="modal-actions">
               <button
@@ -342,7 +339,6 @@ function HomeView({
         </div>
       )}
 
-      {/* MODAL PARA EDITAR UN OBJETIVO EXISTENTE */}
       {objetivoEditando && (
         <div className="modal-backdrop" onClick={() => setObjetivoEditando(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -393,7 +389,6 @@ function HomeView({
         </div>
       )}
 
-      {/* MODAL PARA CALIFICAR (ESTRELLAS EN 0 POR DEFAULT) O ABANDONAR */}
       {modalAccion && (
         <div className="modal-backdrop" onClick={() => setModalAccion(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -407,7 +402,7 @@ function HomeView({
               {modalAccion.tipo === 'vista' ? (
                 <>
                   <p className="modal-helper">
-                    Al marcarla como vista sumás +1 a tus objetivos activos y se desbloquea el espacio para la siguiente película de tu cajón.
+                    Al marcarla como vista sumás +1 a tus objetivos activos y sus minutos se suman a tus horas vistas en el perfil.
                   </p>
                   <label className="form-label">
                     Puntaje ({puntaje} de 5 estrellas)
@@ -440,7 +435,7 @@ function HomeView({
               ) : (
                 <>
                   <p className="modal-helper">
-                    Liberás el lugar en tu Mesa de Luz sin culpa para que suba la siguiente película en espera (no suma a los objetivos).
+                    Liberás el lugar en tu Mesa de Luz sin culpa para que suba la siguiente película en espera.
                   </p>
                   <label className="form-label">
                     Motivo de abandono

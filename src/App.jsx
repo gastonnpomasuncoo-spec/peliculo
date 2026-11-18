@@ -17,7 +17,7 @@ import {
   doc,
   setDoc,
 } from 'firebase/firestore';
-import { auth, db } from './firebase/config';
+import { auth, db, firebaseListo } from './firebase/config';
 import { obtenerNivelUsuario } from './utils/niveles';
 import { obtenerDetalleCompletoPelicula } from './services/tmdb';
 import Navbar from './components/Navbar';
@@ -42,11 +42,8 @@ function App() {
   const [vistaActual, setVistaActual] = useState('home');
   const [modalMenu, setModalMenu] = useState(null);
 
-  // Modal de Bienvenida (Iniciar sesión / Registrarse)
   const [modalBienvenidaAbierto, setModalBienvenidaAbierto] = useState(false);
   const [errorAuth, setErrorAuth] = useState('');
-
-  // Modal de Ficha Técnica al tocar una película
   const [peliculaDetalle, setPeliculaDetalle] = useState(null);
 
   const [peliculas, setPeliculas] = useState([]);
@@ -58,25 +55,44 @@ function App() {
     apodo: '',
     fotoPerfil: '',
     generoPreferido: 'Ciencia Ficción',
-    vistasExtraSimuladas: 0,
+    creadoEn: null,
   });
 
   const [procesando, setProcesando] = useState(false);
   const [notificacion, setNotificacion] = useState(null);
 
+  // Solo muestra alerta en caso de error real; nunca muestra notificaciones de guardado en Firebase
   const mostrarMensaje = (texto, tipo = 'exito') => {
+    if (tipo !== 'error') return;
     setNotificacion({ texto, tipo });
     setTimeout(() => {
       setNotificacion(null);
-    }, 4500);
+    }, 4000);
   };
 
-  // 1. Autenticación en Firebase + Modal de Bienvenida para invitados
+  // Al cambiar entre Home, Descubrir y Perfil, posiciona siempre la página arriba de todo
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [vistaActual]);
+
+  // 1. Autenticación en Firebase
+  useEffect(() => {
+    if (!firebaseListo || !auth) {
+      setUsuario({ uid: '30924820demo' });
+      const regLocal = Boolean(localStorage.getItem('peliculo_registrado'));
+      setEsUsuarioRegistrado(regLocal);
+      if (!regLocal) {
+        setModalBienvenidaAbierto(true);
+      }
+      setCargandoAuth(false);
+      return;
+    }
+
     const desuscribir = onAuthStateChanged(auth, async (userActual) => {
       if (userActual) {
         setUsuario(userActual);
-        const registrado = !userActual.isAnonymous || Boolean(localStorage.getItem('peliculo_registrado'));
+        const registrado =
+          !userActual.isAnonymous || Boolean(localStorage.getItem('peliculo_registrado'));
         setEsUsuarioRegistrado(registrado);
         if (!registrado) {
           setModalBienvenidaAbierto(true);
@@ -87,6 +103,7 @@ function App() {
           await signInAnonymously(auth);
         } catch (err) {
           console.error('Error en Auth:', err);
+          setUsuario({ uid: '30924820demo' });
           setCargandoAuth(false);
         }
       }
@@ -94,9 +111,9 @@ function App() {
     return () => desuscribir();
   }, []);
 
-  // 2. Escucha en tiempo real de Películas, Objetivos y Perfil en Cloud Firestore
+  // 2. Escucha en tiempo real de Cloud Firestore
   useEffect(() => {
-    if (!usuario) return;
+    if (!usuario || !firebaseListo || !db) return;
 
     const qPeliculas = query(collection(db, 'peliculas'), where('uid', '==', usuario.uid));
     const unsubPeliculas = onSnapshot(qPeliculas, (snapshot) => {
@@ -105,7 +122,6 @@ function App() {
       setPeliculas(lista);
     });
 
-    // Objetivo Anual Inicial (editable) guardado en colección 'objetivos'
     const refObjAnual = doc(db, 'objetivos', usuario.uid);
     const unsubObjAnual = onSnapshot(refObjAnual, (docSnap) => {
       if (docSnap.exists()) {
@@ -119,7 +135,6 @@ function App() {
       }
     });
 
-    // Objetivos adicionales sumados por el usuario en 'objetivos_usuario'
     const qObjetivosExtra = query(
       collection(db, 'objetivos_usuario'),
       where('uid', '==', usuario.uid)
@@ -131,9 +146,7 @@ function App() {
         listaObj.sort((a, b) => (a.creadoEn || 0) - (b.creadoEn || 0));
         setObjetivosPersonalizados(listaObj);
       },
-      () => {
-        // Si las reglas de Firestore aún no tienen objetivos_usuario, mantiene estado en memoria
-      }
+      () => {}
     );
 
     const refPerfil = doc(db, 'perfiles', usuario.uid);
@@ -162,21 +175,42 @@ function App() {
     .filter((p) => p.estado === 'vista' || p.estado === 'abandonada')
     .sort((a, b) => (b.actualizadoEn || 0) - (a.actualizadoEn || 0));
 
-  const totalVistasConSimulacion =
-    peliculasVistas.length + (Number(perfilConfig.vistasExtraSimuladas) || 0);
-  const nivelInfo = obtenerNivelUsuario(totalVistasConSimulacion);
+  const nivelInfo = obtenerNivelUsuario(peliculasVistas.length);
+
+  // Cálculo de DÍAS registrado y HORAS VISTAS para el Perfil
+  const fechaCreacionAuth = usuario?.metadata?.creationTime
+    ? new Date(usuario.metadata.creationTime).getTime()
+    : null;
+  const fechaMasAntiguaPeli =
+    peliculas.length > 0 ? Math.min(...peliculas.map((p) => p.creadoEn || Date.now())) : null;
+  const timestampRegistro =
+    perfilConfig.creadoEn || fechaCreacionAuth || fechaMasAntiguaPeli || Date.now();
+  const diasRegistrado = Math.max(
+    1,
+    Math.ceil((Date.now() - timestampRegistro) / (1000 * 60 * 60 * 24))
+  );
+
+const totalMinutosVistos = peliculasVistas.reduce(
+    (acc, p) => acc + (Number(p.duracion) || 124),
+    0
+  );
+  const horasEnteras = Math.floor(totalMinutosVistos / 60);
+  const minutosRestantes = totalMinutosVistos % 60;
+  const horasVistas = `${horasEnteras}:${String(minutosRestantes).padStart(2, '0')}`;
 
   const nombreUsuarioVisible =
     perfilConfig.apodo ||
-    (usuario?.email ? usuario.email.split('@')[0] : usuario ? `user${usuario.uid.slice(0, 7).toLowerCase()}` : 'user30924820');
+    (usuario?.email
+      ? usuario.email.split('@')[0]
+      : usuario
+      ? `user${usuario.uid.slice(0, 7).toLowerCase()}`
+      : 'user30924820');
 
-  // Lista unificada de objetivos activos: el Anual Inicial + todos los sumados
   const objetivosActivos = [
     ...(objetivoAnualConfig.vencido ? [] : [objetivoAnualConfig]),
     ...objetivosPersonalizados.filter((o) => !o.vencido),
   ];
 
-  // Verificación automática de vencimiento de plazo en objetivos
   useEffect(() => {
     const ahora = Date.now();
     objetivosPersonalizados.forEach((obj) => {
@@ -184,65 +218,72 @@ function App() {
         finalizarPlazoObjetivo(obj);
       }
     });
-  }, [objetivosPersonalizados, totalVistasConSimulacion]);
+  }, [objetivosPersonalizados, peliculasVistas.length]);
 
-  // Abrir pop-up con información completa de la película
   const abrirDetallePelicula = async (pelicula) => {
     setPeliculaDetalle(pelicula);
     const detalleEnriquecido = await obtenerDetalleCompletoPelicula(pelicula);
     setPeliculaDetalle(detalleEnriquecido);
   };
 
-  // Iniciar sesión o Registrarse desde el Modal de Bienvenida
   const autenticarUsuario = async ({ tipo, email, password, apodo }) => {
     setErrorAuth('');
+    if (!firebaseListo || !auth) {
+      localStorage.setItem('peliculo_registrado', 'true');
+      setEsUsuarioRegistrado(true);
+      setModalBienvenidaAbierto(false);
+      const nuevoApodo = apodo || email.split('@')[0];
+      setPerfilConfig((prev) => ({
+        ...prev,
+        apodo: nuevoApodo,
+        creadoEn: prev.creadoEn || Date.now(),
+      }));
+      return;
+    }
+
     try {
       if (tipo === 'registro') {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         localStorage.setItem('peliculo_registrado', 'true');
         setEsUsuarioRegistrado(true);
         setModalBienvenidaAbierto(false);
-        if (apodo) {
+        if (db) {
           await setDoc(doc(db, 'perfiles', cred.user.uid), {
             uid: cred.user.uid,
-            apodo,
+            apodo: apodo || email.split('@')[0],
             cuentaRegistrada: true,
+            creadoEn: Date.now(),
             actualizadoEn: Date.now(),
           });
         }
-        mostrarMensaje(`¡Cuenta creada con éxito! Bienvenido/a, ${apodo || email}.`);
       } else {
         await signInWithEmailAndPassword(auth, email, password);
         localStorage.setItem('peliculo_registrado', 'true');
         setEsUsuarioRegistrado(true);
         setModalBienvenidaAbierto(false);
-        mostrarMensaje('¡Iniciaste sesión correctamente!');
       }
     } catch (err) {
-      // Si en Firebase Console aún no habilitaron Email/Password, permite registro vinculado al UID actual
       if (
         err.code === 'auth/operation-not-allowed' ||
         err.code === 'auth/configuration-not-found'
       ) {
-        if (usuario) {
-          localStorage.setItem('peliculo_registrado', 'true');
-          setEsUsuarioRegistrado(true);
-          setModalBienvenidaAbierto(false);
-          const nuevoApodo = apodo || email.split('@')[0];
-          await guardarPerfilConfig({
-            ...perfilConfig,
-            apodo: nuevoApodo,
-            cuentaRegistrada: true,
-          });
-          mostrarMensaje(`¡Bienvenido/a ${nuevoApodo}! Ya podés guardar tus películas.`);
-          return;
-        }
+        localStorage.setItem('peliculo_registrado', 'true');
+        setEsUsuarioRegistrado(true);
+        setModalBienvenidaAbierto(false);
+        const nuevoApodo = apodo || email.split('@')[0];
+        await guardarPerfilConfig({
+          ...perfilConfig,
+          apodo: nuevoApodo,
+          cuentaRegistrada: true,
+          creadoEn: perfilConfig.creadoEn || Date.now(),
+        });
+        return;
       }
       setErrorAuth('Verificá tu correo y contraseña (mínimo 6 caracteres).');
     }
   };
 
-  // CRUD 1: Agregar Película (Si omitió el login, vuelve a saltar el modal de bienvenida)
+  // CRUD 1: Guardar película identificándola por su tmdbId único y obteniendo su duración exacta
   const agregarPelicula = async (datosPelicula) => {
     if (!esUsuarioRegistrado) {
       setModalBienvenidaAbierto(true);
@@ -250,39 +291,44 @@ function App() {
     }
     if (!usuario) return;
 
+    // Verifica por tmdbId único que esa misma película no esté ya activa
+    const yaExiste = peliculas.some(
+      (p) =>
+        (p.estado === 'mesa_de_luz' || p.estado === 'en_espera') &&
+        Number(p.tmdbId) === Number(datosPelicula.tmdbId)
+    );
+    if (yaExiste) return;
+
     setProcesando(true);
     try {
+      const fichaCompleta = await obtenerDetalleCompletoPelicula(datosPelicula);
       const estadoInicial = mesaDeLuz.length < 3 ? 'mesa_de_luz' : 'en_espera';
-      await addDoc(collection(db, 'peliculas'), {
+      const nuevoDoc = {
         uid: usuario.uid,
-        tmdbId: datosPelicula.tmdbId || Date.now(),
-        titulo: datosPelicula.titulo,
-        anio: datosPelicula.anio || '2024',
-        duracion: datosPelicula.duracion || 125,
-        genero: datosPelicula.genero || 'General',
-        director: datosPelicula.director || 'Director destacado',
-        cast: datosPelicula.cast || 'Reparto principal',
-        sinopsis: datosPelicula.sinopsis || '',
-        poster: datosPelicula.poster,
+        tmdbId: Number(fichaCompleta.tmdbId || datosPelicula.tmdbId || Date.now()),
+        titulo: fichaCompleta.titulo,
+        anio: fichaCompleta.anio || '2024',
+        duracion: Number(fichaCompleta.duracion) || 124,
+        genero: fichaCompleta.genero || 'General',
+        director: fichaCompleta.director || 'Director destacado',
+        cast: fichaCompleta.cast || 'Reparto principal',
+        sinopsis: fichaCompleta.sinopsis || '',
+        poster: fichaCompleta.poster,
         estado: estadoInicial,
         puntaje: 0,
         comentario: '',
         creadoEn: Date.now(),
         actualizadoEn: Date.now(),
-      });
+      };
 
-      if (estadoInicial === 'mesa_de_luz') {
-        mostrarMensaje(
-          `"${datosPelicula.titulo}" se sumó a tu Mesa de Luz (${mesaDeLuz.length + 1}/3).`
-        );
+      if (firebaseListo && db) {
+        await addDoc(collection(db, 'peliculas'), nuevoDoc);
       } else {
-        mostrarMensaje(
-          `Mesa de Luz completa (3/3). "${datosPelicula.titulo}" se guardó en tu Cajón Oculto.`
-        );
+        setPeliculas((prev) => [...prev, { id: String(Date.now()), ...nuevoDoc }]);
       }
     } catch (error) {
       console.error('Error al guardar película:', error);
-      mostrarMensaje('Error al guardar la película en Firebase.', 'error');
+      mostrarMensaje('Error al guardar la película.', 'error');
     } finally {
       setProcesando(false);
     }
@@ -291,10 +337,20 @@ function App() {
   const promoverSiguienteDelCajon = async () => {
     if (cajonDeEspera.length > 0) {
       const siguiente = cajonDeEspera[0];
-      await updateDoc(doc(db, 'peliculas', siguiente.id), {
-        estado: 'mesa_de_luz',
-        actualizadoEn: Date.now(),
-      });
+      if (firebaseListo && db) {
+        await updateDoc(doc(db, 'peliculas', siguiente.id), {
+          estado: 'mesa_de_luz',
+          actualizadoEn: Date.now(),
+        });
+      } else {
+        setPeliculas((prev) =>
+          prev.map((p) =>
+            p.id === siguiente.id
+              ? { ...p, estado: 'mesa_de_luz', actualizadoEn: Date.now() }
+              : p
+          )
+        );
+      }
       return siguiente.titulo;
     }
     return null;
@@ -304,24 +360,32 @@ function App() {
   const completarPelicula = async (pelicula, puntaje, comentario) => {
     setProcesando(true);
     try {
-      await updateDoc(doc(db, 'peliculas', pelicula.id), {
-        estado: 'vista',
-        puntaje: Number(puntaje),
-        comentario,
-        actualizadoEn: Date.now(),
-      });
-
-      const promovida = await promoverSiguienteDelCajon();
-      if (promovida) {
-        mostrarMensaje(
-          `¡Sumaste +1 a tus objetivos! "${promovida}" se desbloqueó del Cajón Oculto a tu Mesa de Luz.`
-        );
+      if (firebaseListo && db) {
+        await updateDoc(doc(db, 'peliculas', pelicula.id), {
+          estado: 'vista',
+          puntaje: Number(puntaje),
+          comentario,
+          actualizadoEn: Date.now(),
+        });
       } else {
-        mostrarMensaje(`¡Felicitaciones! "${pelicula.titulo}" sumó +1 a tus objetivos.`);
+        setPeliculas((prev) =>
+          prev.map((p) =>
+            p.id === pelicula.id
+              ? {
+                  ...p,
+                  estado: 'vista',
+                  puntaje: Number(puntaje),
+                  comentario,
+                  actualizadoEn: Date.now(),
+                }
+              : p
+          )
+        );
       }
+      await promoverSiguienteDelCajon();
     } catch (error) {
       console.error('Error al actualizar película:', error);
-      mostrarMensaje('No se pudo actualizar el estado en Firebase.', 'error');
+      mostrarMensaje('No se pudo actualizar el estado.', 'error');
     } finally {
       setProcesando(false);
     }
@@ -331,34 +395,39 @@ function App() {
   const abandonarPelicula = async (pelicula, motivo) => {
     setProcesando(true);
     try {
-      await updateDoc(doc(db, 'peliculas', pelicula.id), {
-        estado: 'abandonada',
-        comentario: motivo,
-        actualizadoEn: Date.now(),
-      });
-
-      const promovida = await promoverSiguienteDelCajon();
-      if (promovida) {
-        mostrarMensaje(
-          `Descartaste "${pelicula.titulo}". Se desbloqueó en tu Mesa de Luz "${promovida}".`
-        );
+      if (firebaseListo && db) {
+        await updateDoc(doc(db, 'peliculas', pelicula.id), {
+          estado: 'abandonada',
+          comentario: motivo,
+          actualizadoEn: Date.now(),
+        });
       } else {
-        mostrarMensaje(`Descartaste "${pelicula.titulo}". Liberaste un espacio en tu Mesa de Luz.`);
+        setPeliculas((prev) =>
+          prev.map((p) =>
+            p.id === pelicula.id
+              ? { ...p, estado: 'abandonada', comentario: motivo, actualizadoEn: Date.now() }
+              : p
+          )
+        );
       }
+      await promoverSiguienteDelCajon();
     } catch (error) {
       console.error('Error al abandonar película:', error);
-      mostrarMensaje('No se pudo modificar el registro en Firebase.', 'error');
+      mostrarMensaje('No se pudo modificar el registro.', 'error');
     } finally {
       setProcesando(false);
     }
   };
 
-  // CRUD 4: Eliminar Película del historial
+  // CRUD 4: Eliminar Película del Historial
   const eliminarPelicula = async (idDocumento) => {
     setProcesando(true);
     try {
-      await deleteDoc(doc(db, 'peliculas', idDocumento));
-      mostrarMensaje('Registro eliminado correctamente de Cloud Firestore.');
+      if (firebaseListo && db) {
+        await deleteDoc(doc(db, 'peliculas', idDocumento));
+      } else {
+        setPeliculas((prev) => prev.filter((p) => p.id !== idDocumento));
+      }
     } catch (error) {
       console.error('Error al eliminar:', error);
       mostrarMensaje('Error al intentar eliminar el documento.', 'error');
@@ -367,7 +436,6 @@ function App() {
     }
   };
 
-  // SUMAR un nuevo objetivo sin reemplazar los anteriores
   const agregarNuevoObjetivo = async (datosObj) => {
     if (!usuario) return;
     setProcesando(true);
@@ -384,51 +452,53 @@ function App() {
     };
 
     try {
-      await addDoc(collection(db, 'objetivos_usuario'), nuevo);
-      mostrarMensaje(`Se sumó "${datosObj.titulo}" (${datosObj.cantidadMeta} películas) a tus objetivos.`);
+      if (firebaseListo && db) {
+        await addDoc(collection(db, 'objetivos_usuario'), nuevo);
+      } else {
+        setObjetivosPersonalizados((prev) => [...prev, { id: String(Date.now()), ...nuevo }]);
+      }
     } catch {
-      // Respaldo local inmediato si aún no publicaron la regla objetivos_usuario
       setObjetivosPersonalizados((prev) => [...prev, { id: String(Date.now()), ...nuevo }]);
-      mostrarMensaje(`Se sumó "${datosObj.titulo}" a tus objetivos activos.`);
     } finally {
       setProcesando(false);
     }
   };
 
-  // EDITAR un objetivo existente (incluido el Anual Inicial de 50 películas)
   const editarObjetivoExistente = async (idObj, cambios) => {
     if (!usuario) return;
     setProcesando(true);
     try {
       if (idObj === 'anual_default') {
-        await setDoc(doc(db, 'objetivos', usuario.uid), {
-          uid: usuario.uid,
-          cantidadMeta: cambios.cantidadMeta,
-          plazoMeses: cambios.plazoMeses,
-          actualizadoEn: Date.now(),
-        });
+        if (firebaseListo && db) {
+          await setDoc(doc(db, 'objetivos', usuario.uid), {
+            uid: usuario.uid,
+            cantidadMeta: cambios.cantidadMeta,
+            plazoMeses: cambios.plazoMeses,
+            actualizadoEn: Date.now(),
+          });
+        } else {
+          setObjetivoAnualConfig((prev) => ({ ...prev, ...cambios }));
+        }
       } else {
-        try {
+        if (firebaseListo && db) {
           await updateDoc(doc(db, 'objetivos_usuario', idObj), {
             cantidadMeta: cambios.cantidadMeta,
             plazoMeses: cambios.plazoMeses,
             actualizadoEn: Date.now(),
           });
-        } catch {
+        } else {
           setObjetivosPersonalizados((prev) =>
             prev.map((o) => (o.id === idObj ? { ...o, ...cambios } : o))
           );
         }
       }
-      mostrarMensaje('Objetivo actualizado correctamente.');
     } finally {
       setProcesando(false);
     }
   };
 
-  // Cuando termina el plazo de un objetivo: desaparece de activos y muestra aviso según si se cumplió o no
   const finalizarPlazoObjetivo = async (obj) => {
-    const cumplido = totalVistasConSimulacion >= obj.cantidadMeta;
+    const cumplido = peliculasVistas.length >= obj.cantidadMeta;
     setAvisosObjetivosVencidos((prev) => [
       {
         id: `${obj.id}_${Date.now()}`,
@@ -443,31 +513,51 @@ function App() {
       setObjetivoAnualConfig((prev) => ({ ...prev, vencido: true }));
     } else {
       try {
-        await deleteDoc(doc(db, 'objetivos_usuario', obj.id));
+        if (firebaseListo && db) {
+          await deleteDoc(doc(db, 'objetivos_usuario', obj.id));
+        } else {
+          setObjetivosPersonalizados((prev) => prev.filter((o) => o.id !== obj.id));
+        }
       } catch {
         setObjetivosPersonalizados((prev) => prev.filter((o) => o.id !== obj.id));
       }
     }
   };
 
-  // Guardar Configuración / Foto / Simulador de Perfil
   const guardarPerfilConfig = async (nuevaConfig) => {
     if (!usuario) return;
     setProcesando(true);
+    const payload = {
+      uid: usuario.uid,
+      ...perfilConfig,
+      ...nuevaConfig,
+      creadoEn: perfilConfig.creadoEn || Date.now(),
+      actualizadoEn: Date.now(),
+    };
     try {
-      await setDoc(doc(db, 'perfiles', usuario.uid), {
-        uid: usuario.uid,
-        ...nuevaConfig,
-        actualizadoEn: Date.now(),
-      });
-      setPerfilConfig((prev) => ({ ...prev, ...nuevaConfig }));
-      mostrarMensaje('Configuración de perfil guardada en Firebase.');
-    } catch (error) {
-      console.error('Error al guardar perfil:', error);
-      setPerfilConfig((prev) => ({ ...prev, ...nuevaConfig }));
-      mostrarMensaje('Configuración aplicada.');
+      if (firebaseListo && db) {
+        await setDoc(doc(db, 'perfiles', usuario.uid), payload);
+      }
+      setPerfilConfig(payload);
+    } catch {
+      setPerfilConfig(payload);
     } finally {
       setProcesando(false);
+    }
+  };
+
+  const enviarTicketSoporte = async ({ asunto, mensaje }) => {
+    if (!usuario || !firebaseListo || !db) return;
+    try {
+      await addDoc(collection(db, 'soporte_tickets'), {
+        uid: usuario.uid,
+        usuario: nombreUsuarioVisible,
+        asunto,
+        mensaje,
+        creadoEn: Date.now(),
+      });
+    } catch {
+      // Si la colección soporte_tickets no está en reglas, confirma igualmente en interfaz
     }
   };
 
@@ -475,8 +565,10 @@ function App() {
     try {
       localStorage.removeItem('peliculo_registrado');
       setEsUsuarioRegistrado(false);
-      await signOut(auth);
-      mostrarMensaje('Cerraste sesión correctamente.');
+      if (firebaseListo && auth) {
+        await signOut(auth);
+      }
+      setModalBienvenidaAbierto(true);
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }
@@ -486,7 +578,7 @@ function App() {
     return (
       <div className="fullscreen-loader">
         <h1 className="brand-logo">PELICULO :V</h1>
-        <p>Conectando con Firebase...</p>
+        <p>Cargando aplicación...</p>
       </div>
     );
   }
@@ -503,7 +595,11 @@ function App() {
       />
 
       {notificacion && (
-        <div className={`toast-banner ${notificacion.tipo === 'error' ? 'toast-error' : 'toast-success'}`}>
+        <div
+          className={`toast-banner ${
+            notificacion.tipo === 'error' ? 'toast-error' : 'toast-success'
+          }`}
+        >
           <span>{notificacion.texto}</span>
         </div>
       )}
@@ -518,7 +614,7 @@ function App() {
             onDescartarAvisoVencido={(idAviso) =>
               setAvisosObjetivosVencidos((prev) => prev.filter((a) => a.id !== idAviso))
             }
-            peliculasVistasCount={totalVistasConSimulacion}
+            peliculasVistasCount={peliculasVistas.length}
             onCompletarPelicula={completarPelicula}
             onAbandonarPelicula={abandonarPelicula}
             onAgregarObjetivo={agregarNuevoObjetivo}
@@ -545,6 +641,8 @@ function App() {
             nombreUsuario={nombreUsuarioVisible}
             fotoPerfil={perfilConfig.fotoPerfil}
             nivelInfo={nivelInfo}
+            diasRegistrado={diasRegistrado}
+            horasVistas={horasVistas}
             mesaDeLuz={mesaDeLuz}
             historialPeliculas={historialPeliculas}
             onEliminarPelicula={eliminarPelicula}
@@ -561,8 +659,8 @@ function App() {
         nombreUsuario={nombreUsuarioVisible}
         fotoPerfil={perfilConfig.fotoPerfil}
         generoPreferido={perfilConfig.generoPreferido}
-        vistasExtraSimuladas={perfilConfig.vistasExtraSimuladas}
         onGuardarPerfilConfig={guardarPerfilConfig}
+        onEnviarSoporte={enviarTicketSoporte}
         mesaDeLuz={mesaDeLuz}
         peliculaDetalle={peliculaDetalle}
         cerrarDetallePelicula={() => setPeliculaDetalle(null)}
@@ -572,7 +670,7 @@ function App() {
             ? peliculas.some(
                 (p) =>
                   (p.estado === 'mesa_de_luz' || p.estado === 'en_espera') &&
-                  p.titulo.toLowerCase() === peliculaDetalle.titulo.toLowerCase()
+                  Number(p.tmdbId) === Number(peliculaDetalle.tmdbId)
               )
             : false
         }

@@ -1,10 +1,75 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  obtenerCatalogoTMDB,
+  obtenerSeccionesCatalogoTMDB,
   buscarPeliculasTMDB,
-  SUGERENCIAS_MAS_BUSCADAS,
+  SUGERENCIAS_INICIALES,
+  CATALOGO_RESPALDO,
+  generarPosterRespaldo,
 } from '../services/tmdb';
 import MovieCard from './MovieCard';
+
+function CarouselRow({
+  titulo,
+  peliculas,
+  estaGuardada,
+  procesando,
+  onAgregarPelicula,
+  onSeleccionarPelicula,
+}) {
+  const trackRef = useRef(null);
+
+  const desplazarCarrusel = (direccion) => {
+    if (!trackRef.current) return;
+    const desplazamiento = trackRef.current.clientWidth * 0.78;
+    trackRef.current.scrollBy({
+      left: direccion === 'izq' ? -desplazamiento : desplazamiento,
+      behavior: 'smooth',
+    });
+  };
+
+  if (!peliculas || peliculas.length === 0) return null;
+
+  return (
+    <div className="carousel-section">
+      <div className="carousel-header">
+        <h2 className="category-heading">{titulo}</h2>
+        <div className="carousel-controls">
+          <button
+            type="button"
+            className="carousel-arrow-btn"
+            onClick={() => desplazarCarrusel('izq')}
+            aria-label="Anterior"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="carousel-arrow-btn"
+            onClick={() => desplazarCarrusel('der')}
+            aria-label="Siguiente"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+
+      <div className="carousel-track" ref={trackRef}>
+        {peliculas.map((peli) => (
+          <div key={peli.tmdbId} className="carousel-item">
+            <MovieCard
+              pelicula={peli}
+              modo="catalogo"
+              yaGuardada={estaGuardada(peli)}
+              procesando={procesando}
+              onAgregar={onAgregarPelicula}
+              onSeleccionarPelicula={onSeleccionarPelicula}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function DiscoverView({
   peliculasUsuario,
@@ -13,26 +78,63 @@ function DiscoverView({
   generoPreferido,
   procesando,
 }) {
-  const [catalogo, setCatalogo] = useState([]);
+  const [secciones, setSecciones] = useState([]);
+  const [resultadosBusqueda, setResultadosBusqueda] = useState(null);
   const [busqueda, setBusqueda] = useState('');
+  const [sugerenciasVivo, setSugerenciasVivo] = useState(SUGERENCIAS_INICIALES);
   const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
   const contenedorBuscadorRef = useRef(null);
 
   useEffect(() => {
     let activo = true;
-    obtenerCatalogoTMDB().then((datos) => {
+    setCargandoCatalogo(true);
+    obtenerSeccionesCatalogoTMDB(generoPreferido || 'Ciencia Ficción').then((datos) => {
       if (activo) {
-        setCatalogo(datos);
+        setSecciones(datos);
         setCargandoCatalogo(false);
       }
     });
     return () => {
       activo = false;
     };
-  }, []);
+  }, [generoPreferido]);
 
-  // Cierra el dropdown de sugerencias al hacer clic afuera
+  // Sugerencias dinámicas en vivo a medida que el usuario escribe en el buscador
+  useEffect(() => {
+    const texto = busqueda.trim();
+    if (!texto) {
+      setSugerenciasVivo(SUGERENCIAS_INICIALES);
+      setResultadosBusqueda(null);
+      return;
+    }
+
+    // 1. Filtrado instantáneo sobre las películas ya cargadas en memoria
+    const poolLocal = [
+      ...CATALOGO_RESPALDO,
+      ...secciones.flatMap((s) => s.peliculas || []),
+    ];
+    const mapaUnico = new Map();
+    poolLocal.forEach((p) => {
+      if (p.titulo.toLowerCase().includes(texto.toLowerCase())) {
+        mapaUnico.set(Number(p.tmdbId), p);
+      }
+    });
+    const instantaneas = Array.from(mapaUnico.values()).slice(0, 7);
+    if (instantaneas.length > 0) {
+      setSugerenciasVivo(instantaneas);
+    }
+
+    // 2. Búsqueda en vivo en la API de TMDB a medida que escribe
+    const timer = setTimeout(async () => {
+      const resultadosAPI = await buscarPeliculasTMDB(texto);
+      setSugerenciasVivo(resultadosAPI.slice(0, 8));
+      setResultadosBusqueda(resultadosAPI);
+    }, 220);
+
+    return () => clearTimeout(timer);
+  }, [busqueda, secciones]);
+
   useEffect(() => {
     const manejarClickAfuera = (e) => {
       if (
@@ -49,34 +151,43 @@ function DiscoverView({
   const ejecutarBusqueda = async (terminoManual) => {
     const texto = typeof terminoManual === 'string' ? terminoManual : busqueda;
     setMostrarSugerencias(false);
+    if (!texto.trim()) {
+      setResultadosBusqueda(null);
+      return;
+    }
     setCargandoCatalogo(true);
     const resultados = await buscarPeliculasTMDB(texto);
-    setCatalogo(resultados);
+    setResultadosBusqueda(resultados);
     setCargandoCatalogo(false);
   };
 
-  const elegirSugerencia = (sugerencia) => {
-    setBusqueda(sugerencia);
-    ejecutarBusqueda(sugerencia);
+  const elegirPeliculaSugerida = (peliSugerida) => {
+    setBusqueda(peliSugerida.titulo);
+    setMostrarSugerencias(false);
+    // Pone primero la película exacta elegida (por su tmdbId único)
+    setResultadosBusqueda((prev) => {
+      const base = prev || sugerenciasVivo;
+      const resto = base.filter((p) => Number(p.tmdbId) !== Number(peliSugerida.tmdbId));
+      return [peliSugerida, ...resto];
+    });
   };
 
+  // Compara por tmdbId único para que dos películas con el mismo nombre NO se marquen juntas
   const estaGuardada = (peliculaCat) =>
-    peliculasUsuario.some(
-      (p) =>
-        (p.estado === 'mesa_de_luz' || p.estado === 'en_espera') &&
-        p.titulo.toLowerCase() === peliculaCat.titulo.toLowerCase()
-    );
-
-  const peliculasCienciaFiccion = catalogo.filter((p) =>
-    p.genero.toLowerCase().includes('ciencia')
-  );
-  const peliculasOtras = catalogo.filter(
-    (p) => !p.genero.toLowerCase().includes('ciencia')
-  );
+    peliculasUsuario.some((p) => {
+      const activa = p.estado === 'mesa_de_luz' || p.estado === 'en_espera';
+      if (!activa) return false;
+      if (p.tmdbId && peliculaCat.tmdbId) {
+        return Number(p.tmdbId) === Number(peliculaCat.tmdbId);
+      }
+      return (
+        p.titulo.toLowerCase() === peliculaCat.titulo.toLowerCase() &&
+        String(p.anio) === String(peliculaCat.anio)
+      );
+    });
 
   return (
     <section className="view-container">
-      {/* Barra de búsqueda sin sugerencias nativas + Dropdown de lo más buscado */}
       <div className="search-bar-container" ref={contenedorBuscadorRef}>
         <form
           onSubmit={(e) => {
@@ -106,7 +217,7 @@ function DiscoverView({
                 className="clear-search-btn"
                 onClick={() => {
                   setBusqueda('');
-                  ejecutarBusqueda('');
+                  setResultadosBusqueda(null);
                 }}
               >
                 ✕
@@ -117,17 +228,37 @@ function DiscoverView({
             </button>
           </div>
 
-          {mostrarSugerencias && (
+          {mostrarSugerencias && sugerenciasVivo.length > 0 && (
             <div className="search-suggestions-dropdown">
-              <span className="suggestions-header">🔥 Lo más buscado en Peliculo</span>
-              {SUGERENCIAS_MAS_BUSCADAS.map((item) => (
+              <span className="suggestions-header">
+                {busqueda.trim()
+                  ? `🔍 Sugerencias en vivo para "${busqueda.trim()}"`
+                  : '🔥 Lo más buscado en Peliculo'}
+              </span>
+              {sugerenciasVivo.map((peli) => (
                 <button
-                  key={item}
+                  key={peli.tmdbId}
                   type="button"
                   className="suggestion-item-btn"
-                  onClick={() => elegirSugerencia(item)}
+                  onClick={() => elegirPeliculaSugerida(peli)}
                 >
-                  <span>🔍 {item}</span>
+                  <div className="suggestion-item-left">
+                    <img
+                      src={peli.poster || generarPosterRespaldo(peli.titulo)}
+                      alt={peli.titulo}
+                      className="suggestion-mini-thumb"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = generarPosterRespaldo(peli.titulo);
+                      }}
+                    />
+                    <div className="suggestion-item-texts">
+                      <strong>{peli.titulo}</strong>
+                      <span>
+                        {peli.anio} · {peli.genero}
+                      </span>
+                    </div>
+                  </div>
                   <span className="suggestion-arrow">↗</span>
                 </button>
               ))}
@@ -137,53 +268,52 @@ function DiscoverView({
       </div>
 
       {cargandoCatalogo ? (
-        <div className="loading-box">Cargando catálogo completo de películas...</div>
-      ) : (
-        <>
-          {peliculasCienciaFiccion.length > 0 && (
-            <div className="catalog-category-block">
-              <h2 className="category-heading">
-                Ciencia Ficción {generoPreferido === 'Ciencia Ficción' && '★ Tu género favorito'}
-              </h2>
-              <div className="catalog-grid">
-                {peliculasCienciaFiccion.map((peli) => (
-                  <MovieCard
-                    key={peli.tmdbId}
-                    pelicula={peli}
-                    modo="catalogo"
-                    yaGuardada={estaGuardada(peli)}
-                    procesando={procesando}
-                    onAgregar={onAgregarPelicula}
-                    onSeleccionarPelicula={onSeleccionarPelicula}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="loading-box">Cargando carruseles de películas...</div>
+      ) : resultadosBusqueda ? (
+        <div className="search-results-section">
+          <div className="carousel-header">
+            <h2 className="category-heading">
+              Resultados para "{busqueda}" ({resultadosBusqueda.length})
+            </h2>
+            <button
+              type="button"
+              className="btn-secondary btn-xs"
+              onClick={() => {
+                setBusqueda('');
+                setResultadosBusqueda(null);
+              }}
+            >
+              ← Volver a los carruseles
+            </button>
+          </div>
 
-          {peliculasOtras.length > 0 && (
-            <div className="catalog-category-block">
-              <h2 className="category-heading">Catálogo Completo y Aclamadas</h2>
-              <div className="catalog-grid">
-                {peliculasOtras.map((peli) => (
-                  <MovieCard
-                    key={peli.tmdbId}
-                    pelicula={peli}
-                    modo="catalogo"
-                    yaGuardada={estaGuardada(peli)}
-                    procesando={procesando}
-                    onAgregar={onAgregarPelicula}
-                    onSeleccionarPelicula={onSeleccionarPelicula}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {catalogo.length === 0 && (
+          {resultadosBusqueda.length === 0 ? (
             <p className="empty-message">No se encontraron películas para "{busqueda}".</p>
+          ) : (
+            <CarouselRow
+              titulo="Coincidencias encontradas"
+              peliculas={resultadosBusqueda}
+              estaGuardada={estaGuardada}
+              procesando={procesando}
+              onAgregarPelicula={onAgregarPelicula}
+              onSeleccionarPelicula={onSeleccionarPelicula}
+            />
           )}
-        </>
+        </div>
+      ) : (
+        <div className="carousels-stack">
+          {secciones.map((sec) => (
+            <CarouselRow
+              key={sec.id}
+              titulo={sec.titulo}
+              peliculas={sec.peliculas}
+              estaGuardada={estaGuardada}
+              procesando={procesando}
+              onAgregarPelicula={onAgregarPelicula}
+              onSeleccionarPelicula={onSeleccionarPelicula}
+            />
+          ))}
+        </div>
       )}
     </section>
   );

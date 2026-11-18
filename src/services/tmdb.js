@@ -2,7 +2,6 @@ const RAW_TMDB_KEY = import.meta.env.VITE_TMDB_API_KEY?.trim() || '';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 export const TMDB_IMG_BASE = 'https://image.tmdb.org/t/p/w500';
 
-// Detecta automáticamente si el usuario pegó la API Key (32 caracteres) o el Token JWT (empieza con eyJ)
 const tieneClaveTMDB = Boolean(
   RAW_TMDB_KEY &&
   RAW_TMDB_KEY !== 'opcional_tu_api_key_de_tmdb' &&
@@ -32,35 +31,17 @@ async function fetchTMDB(rutaConParametros) {
   return respuesta.json();
 }
 
-export const SUGERENCIAS_MAS_BUSCADAS = [
-  'Dune: Parte Dos',
-  'Interstellar',
-  'Oppenheimer',
-  'Pobres Criaturas',
-  'Parásitos',
-  'El Padrino',
-  'Spider-Man: A través del Spider-Verso',
-  'Batman: El Caballero de la Noche',
+export const GENEROS_DISPONIBLES = [
+  { nombre: 'Ciencia Ficción', id: 878 },
+  { nombre: 'Thriller / Drama', id: 53 },
+  { nombre: 'Drama / Fantasía', id: 14 },
+  { nombre: 'Acción', id: 28 },
+  { nombre: 'Comedia', id: 35 },
+  { nombre: 'Terror', id: 27 },
+  { nombre: 'Animación', id: 16 },
+  { nombre: 'Crimen', id: 80 },
 ];
 
-export function generarPosterRespaldo(titulo = 'Peliculo') {
-  const textoLimpio = String(titulo).slice(0, 28);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="750" viewBox="0 0 500 750">
-    <defs>
-      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="#121015"/>
-        <stop offset="100%" stop-color="#26262D"/>
-      </linearGradient>
-    </defs>
-    <rect width="500" height="750" fill="url(#bg)"/>
-    <rect x="24" y="24" width="452" height="702" fill="none" stroke="#EAB308" stroke-width="3" stroke-dasharray="10,8"/>
-    <text x="250" y="330" text-anchor="middle" fill="#EAB308" font-family="sans-serif" font-size="38" font-weight="bold">PELICULO :V</text>
-    <text x="250" y="400" text-anchor="middle" fill="#F4F4F4" font-family="sans-serif" font-size="24">${textoLimpio}</text>
-  </svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-}
-
-// Mapa de géneros oficiales de TMDB
 const GENEROS_TMDB = {
   28: 'Acción',
   12: 'Aventura',
@@ -82,6 +63,23 @@ const GENEROS_TMDB = {
   37: 'Western',
 };
 
+export function generarPosterRespaldo(titulo = 'Peliculo') {
+  const textoLimpio = String(titulo).slice(0, 26);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="750" viewBox="0 0 500 750">
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#121015"/>
+        <stop offset="100%" stop-color="#26262D"/>
+      </linearGradient>
+    </defs>
+    <rect width="500" height="750" fill="url(#bg)"/>
+    <rect x="24" y="24" width="452" height="702" fill="none" stroke="#EAB308" stroke-width="3" stroke-dasharray="10,8"/>
+    <text x="250" y="330" text-anchor="middle" fill="#EAB308" font-family="sans-serif" font-size="38" font-weight="bold">PELICULO :V</text>
+    <text x="250" y="400" text-anchor="middle" fill="#F4F4F4" font-family="sans-serif" font-size="22">${textoLimpio}</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 export const CATALOGO_RESPALDO = [
   {
     tmdbId: 693134,
@@ -89,10 +87,35 @@ export const CATALOGO_RESPALDO = [
     anio: '2024',
     duracion: 166,
     genero: 'Ciencia Ficción',
+    categoria: 'lanzamientos',
     director: 'Denis Villeneuve',
     cast: 'Timothée Chalamet, Zendaya, Rebecca Ferguson, Javier Bardem',
     poster: 'https://image.tmdb.org/t/p/w500/8b8R8l88Qje9dn9OE8PY05Nxl1X.jpg',
     sinopsis: 'Paul Atreides se une a Chani y a los Fremen mientras busca venganza contra los conspiradores que destruyeron a su familia en el desierto de Arrakis.',
+  },
+  {
+    tmdbId: 438631,
+    titulo: 'Dune',
+    anio: '2021',
+    duracion: 155,
+    genero: 'Ciencia Ficción',
+    categoria: 'cienciaFiccion',
+    director: 'Denis Villeneuve',
+    cast: 'Timothée Chalamet, Rebecca Ferguson, Oscar Isaac, Zendaya',
+    poster: 'https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg',
+    sinopsis: 'Paul Atreides, un joven brillante con un destino más grande de lo que puede comprender, debe viajar al planeta más peligroso del universo.',
+  },
+  {
+    tmdbId: 841,
+    titulo: 'Dune',
+    anio: '1984',
+    duracion: 137,
+    genero: 'Ciencia Ficción',
+    categoria: 'clasicos',
+    director: 'David Lynch',
+    cast: 'Kyle MacLachlan, Francesca Annis, Sting, Patrick Stewart',
+    poster: 'https://image.tmdb.org/t/p/w500/71I3c8N2kH9J0uR5H8K2W9yV3xM.jpg',
+    sinopsis: 'En el año 10191, la especia melange se produce en un único lugar de todo el universo: el desértico planeta Arrakis.',
   },
   {
     tmdbId: 157336,
@@ -100,6 +123,7 @@ export const CATALOGO_RESPALDO = [
     anio: '2014',
     duracion: 169,
     genero: 'Ciencia Ficción',
+    categoria: 'cienciaFiccion',
     director: 'Christopher Nolan',
     cast: 'Matthew McConaughey, Anne Hathaway, Jessica Chastain, Michael Caine',
     poster: 'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
@@ -111,6 +135,7 @@ export const CATALOGO_RESPALDO = [
     anio: '2017',
     duracion: 164,
     genero: 'Ciencia Ficción',
+    categoria: 'cienciaFiccion',
     director: 'Denis Villeneuve',
     cast: 'Ryan Gosling, Harrison Ford, Ana de Armas, Sylvia Hoeks',
     poster: 'https://image.tmdb.org/t/p/w500/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg',
@@ -122,6 +147,7 @@ export const CATALOGO_RESPALDO = [
     anio: '2016',
     duracion: 116,
     genero: 'Ciencia Ficción',
+    categoria: 'cienciaFiccion',
     director: 'Denis Villeneuve',
     cast: 'Amy Adams, Jeremy Renner, Forest Whitaker',
     poster: 'https://image.tmdb.org/t/p/w500/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg',
@@ -133,6 +159,7 @@ export const CATALOGO_RESPALDO = [
     anio: '1999',
     duracion: 136,
     genero: 'Ciencia Ficción',
+    categoria: 'clasicos',
     director: 'Lana Wachowski, Lilly Wachowski',
     cast: 'Keanu Reeves, Laurence Fishburne, Carrie-Anne Moss, Hugo Weaving',
     poster: 'https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg',
@@ -144,6 +171,7 @@ export const CATALOGO_RESPALDO = [
     anio: '2022',
     duracion: 139,
     genero: 'Ciencia Ficción',
+    categoria: 'aclamadas',
     director: 'Daniel Kwan, Daniel Scheinert',
     cast: 'Michelle Yeoh, Stephanie Hsu, Ke Huy Quan, Jamie Lee Curtis',
     poster: 'https://image.tmdb.org/t/p/w500/w3LxiVYdWWRvEVdn5RYq6jIqkb1.jpg',
@@ -155,6 +183,7 @@ export const CATALOGO_RESPALDO = [
     anio: '2010',
     duracion: 148,
     genero: 'Ciencia Ficción',
+    categoria: 'cienciaFiccion',
     director: 'Christopher Nolan',
     cast: 'Leonardo DiCaprio, Joseph Gordon-Levitt, Elliot Page, Tom Hardy',
     poster: 'https://image.tmdb.org/t/p/w500/edv5CZvWj09upOsy2Y6IwDhK8bt.jpg',
@@ -165,7 +194,8 @@ export const CATALOGO_RESPALDO = [
     titulo: 'Spider-Man: A través del Spider-Verso',
     anio: '2023',
     duracion: 140,
-    genero: 'Ciencia Ficción',
+    genero: 'Animación / Ciencia Ficción',
+    categoria: 'lanzamientos',
     director: 'Joaquim Dos Santos, Kemp Powers, Justin K. Thompson',
     cast: 'Shameik Moore, Hailee Steinfeld, Oscar Isaac, Daniel Kaluuya',
     poster: 'https://image.tmdb.org/t/p/w500/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg',
@@ -177,6 +207,7 @@ export const CATALOGO_RESPALDO = [
     anio: '2023',
     duracion: 180,
     genero: 'Thriller / Drama',
+    categoria: 'lanzamientos',
     director: 'Christopher Nolan',
     cast: 'Cillian Murphy, Emily Blunt, Matt Damon, Robert Downey Jr.',
     poster: 'https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
@@ -188,10 +219,11 @@ export const CATALOGO_RESPALDO = [
     anio: '2019',
     duracion: 132,
     genero: 'Thriller / Drama',
+    categoria: 'aclamadas',
     director: 'Bong Joon-ho',
     cast: 'Song Kang-ho, Lee Sun-kyun, Cho Yeo-jeong, Choi Woo-shik',
     poster: 'https://image.tmdb.org/t/p/w500/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg',
-    sinopsis: 'Tanto toda la familia de Ki-taek como el clan Park están desocupados o en mundos opuestos, hasta que sus vidas se entrelazan de forma inesperada.',
+    sinopsis: 'Tanto toda la familia de Ki-taek como el clan Park están en mundos opuestos, hasta que sus vidas se entrelazan de forma inesperada.',
   },
   {
     tmdbId: 244786,
@@ -199,6 +231,7 @@ export const CATALOGO_RESPALDO = [
     anio: '2014',
     duracion: 107,
     genero: 'Thriller / Drama',
+    categoria: 'aclamadas',
     director: 'Damien Chazelle',
     cast: 'Miles Teller, J.K. Simmons, Paul Reiser',
     poster: 'https://image.tmdb.org/t/p/w500/7fn624j5lj3xTme2SgiLCeuedmO.jpg',
@@ -210,6 +243,7 @@ export const CATALOGO_RESPALDO = [
     anio: '2023',
     duracion: 141,
     genero: 'Drama / Fantasía',
+    categoria: 'lanzamientos',
     director: 'Yorgos Lanthimos',
     cast: 'Emma Stone, Mark Ruffalo, Willem Dafoe, Ramy Youssef',
     poster: 'https://image.tmdb.org/t/p/w500/kCGlIMHnOm8JPXq3rXM6c5wMxcT.jpg',
@@ -221,6 +255,7 @@ export const CATALOGO_RESPALDO = [
     anio: '1972',
     duracion: 175,
     genero: 'Crimen / Drama',
+    categoria: 'clasicos',
     director: 'Francis Ford Coppola',
     cast: 'Marlon Brando, Al Pacino, James Caan, Robert Duvall',
     poster: 'https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg',
@@ -232,6 +267,7 @@ export const CATALOGO_RESPALDO = [
     anio: '2008',
     duracion: 152,
     genero: 'Acción / Thriller',
+    categoria: 'aclamadas',
     director: 'Christopher Nolan',
     cast: 'Christian Bale, Heath Ledger, Aaron Eckhart, Gary Oldman',
     poster: 'https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg',
@@ -243,15 +279,54 @@ export const CATALOGO_RESPALDO = [
     anio: '1994',
     duracion: 154,
     genero: 'Crimen / Thriller',
+    categoria: 'clasicos',
     director: 'Quentin Tarantino',
     cast: 'John Travolta, Samuel L. Jackson, Uma Thurman, Bruce Willis',
     poster: 'https://image.tmdb.org/t/p/w500/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg',
     sinopsis: 'Las vidas de dos sicarios de la mafia, un boxeador, la esposa de un gánster y dos bandidos se entrelazan en cuatro historias de violencia y redención.',
   },
+  {
+    tmdbId: 550,
+    titulo: 'El Club de la Pelea',
+    anio: '1999',
+    duracion: 139,
+    genero: 'Thriller / Drama',
+    categoria: 'clasicos',
+    director: 'David Fincher',
+    cast: 'Brad Pitt, Edward Norton, Helena Bonham Carter',
+    poster: 'https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg',
+    sinopsis: 'Un oficinista con insomnio y un despreocupado fabricante de jabón forman un club de lucha clandestino que evoluciona hacia algo mucho más grande.',
+  },
+  {
+    tmdbId: 129,
+    titulo: 'El Viaje de Chihiro',
+    anio: '2001',
+    duracion: 125,
+    genero: 'Animación / Fantasía',
+    categoria: 'aclamadas',
+    director: 'Hayao Miyazaki',
+    cast: 'Rumi Hiiragi, Miyu Irino, Mari Natsuki',
+    poster: 'https://image.tmdb.org/t/p/w500/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg',
+    sinopsis: 'Durante el traslado de su familia a los suburbios, una niña de 10 años deambula por un mundo gobernado por dioses, brujas y espíritus.',
+  },
+  {
+    tmdbId: 25376,
+    titulo: 'El Secreto de sus Ojos',
+    anio: '2009',
+    duracion: 129,
+    genero: 'Thriller / Drama',
+    categoria: 'clasicos',
+    director: 'Juan José Campanella',
+    cast: 'Ricardo Darín, Soledad Villamil, Guillermo Francella, Pablo Rago',
+    poster: 'https://image.tmdb.org/t/p/w500/dkeAwfZ1L3bfT5E7rC6sTWTeC8N.jpg',
+    sinopsis: 'Un empleado judicial retirado escribe una novela con la esperanza de encontrarle un cierre a uno de sus casos de homicidio sin resolver.',
+  },
 ];
 
+export const SUGERENCIAS_INICIALES = CATALOGO_RESPALDO.slice(0, 8);
+
 function mapearPeliculaTMDB(item, generoPorDefecto = '') {
-  const respaldo = CATALOGO_RESPALDO.find((c) => c.tmdbId === item.id);
+  const respaldo = CATALOGO_RESPALDO.find((c) => Number(c.tmdbId) === Number(item.id));
   const generoMapeado =
     generoPorDefecto ||
     (item.genre_ids && item.genre_ids.length > 0
@@ -264,10 +339,10 @@ function mapearPeliculaTMDB(item, generoPorDefecto = '') {
     'Destacadas';
 
   return {
-    tmdbId: item.id,
+    tmdbId: Number(item.id),
     titulo: item.title || item.original_title || 'Sin título',
     anio: item.release_date ? item.release_date.slice(0, 4) : respaldo?.anio || '2024',
-    duracion: item.runtime || respaldo?.duracion || 125,
+    duracion: item.runtime || respaldo?.duracion || 124,
     genero: generoMapeado,
     director: respaldo?.director || 'Ver en ficha técnica',
     cast: respaldo?.cast || 'Ver en ficha técnica',
@@ -278,51 +353,93 @@ function mapearPeliculaTMDB(item, generoPorDefecto = '') {
   };
 }
 
-export async function obtenerCatalogoTMDB() {
+export async function obtenerSeccionesCatalogoTMDB(generoPreferidoNombre = 'Ciencia Ficción') {
+  const generoObj =
+    GENEROS_DISPONIBLES.find((g) => g.nombre === generoPreferidoNombre) ||
+    GENEROS_DISPONIBLES[0];
+
   if (!tieneClaveTMDB) {
-    return CATALOGO_RESPALDO;
+    return [
+      {
+        id: 'preferido',
+        titulo: `★ Tu Género Preferido: ${generoObj.nombre}`,
+        peliculas: CATALOGO_RESPALDO.filter((p) =>
+          p.genero.toLowerCase().includes(generoObj.nombre.split(' ')[0].toLowerCase())
+        ).concat(CATALOGO_RESPALDO.slice(0, 4)),
+      },
+      {
+        id: 'aclamadas',
+        titulo: '🏆 Películas Aclamadas por la Crítica',
+        peliculas: CATALOGO_RESPALDO.filter((p) => p.categoria === 'aclamadas' || p.duracion > 135),
+      },
+      {
+        id: 'lanzamientos',
+        titulo: '🔥 Nuevos Lanzamientos y Tendencias',
+        peliculas: CATALOGO_RESPALDO.filter((p) => Number(p.anio) >= 2021),
+      },
+      {
+        id: 'clasicos',
+        titulo: '🎞️ Clásicos del Cine',
+        peliculas: CATALOGO_RESPALDO.filter((p) => Number(p.anio) <= 2010),
+      },
+      {
+        id: 'scifi',
+        titulo: '🚀 Universo Ciencia Ficción',
+        peliculas: CATALOGO_RESPALDO.filter((p) => p.genero.includes('Ciencia Ficción')),
+      },
+    ];
   }
 
   try {
-    // Trae múltiples páginas y géneros en paralelo (más de 80 películas reales de TMDB)
-    const [sciFi1, sciFi2, pop1, pop2, top1] = await Promise.all([
-      fetchTMDB('/discover/movie?language=es-ES&with_genres=878&sort_by=popularity.desc&page=1'),
-      fetchTMDB('/discover/movie?language=es-ES&with_genres=878&sort_by=popularity.desc&page=2'),
-      fetchTMDB('/movie/popular?language=es-ES&page=1'),
-      fetchTMDB('/movie/popular?language=es-ES&page=2'),
+    const [resPref, resTop, resNow, resClasicos, resSciFi] = await Promise.all([
+      fetchTMDB(`/discover/movie?language=es-ES&with_genres=${generoObj.id}&sort_by=popularity.desc&page=1`),
       fetchTMDB('/movie/top_rated?language=es-ES&page=1'),
+      fetchTMDB('/movie/now_playing?language=es-ES&page=1'),
+      fetchTMDB('/discover/movie?language=es-ES& primary_release_date.lte=2005-12-31&sort_by=vote_count.desc&page=1'),
+      fetchTMDB('/discover/movie?language=es-ES&with_genres=878&sort_by=vote_count.desc&page=1'),
     ]);
 
-    const listaSciFi = [...(sciFi1.results || []), ...(sciFi2.results || [])].map((m) =>
-      mapearPeliculaTMDB(m, 'Ciencia Ficción')
-    );
-    const listaResto = [
-      ...(pop1.results || []),
-      ...(pop2.results || []),
-      ...(top1.results || []),
-    ].map((m) => mapearPeliculaTMDB(m));
+    const secciones = [
+      {
+        id: 'preferido',
+        titulo: `★ Tu Género Preferido: ${generoObj.nombre}`,
+        peliculas: (resPref.results || []).map((m) => mapearPeliculaTMDB(m, generoObj.nombre)),
+      },
+      {
+        id: 'aclamadas',
+        titulo: '🏆 Películas Aclamadas por la Crítica',
+        peliculas: (resTop.results || []).map((m) => mapearPeliculaTMDB(m)),
+      },
+      {
+        id: 'lanzamientos',
+        titulo: '🔥 Nuevos Lanzamientos en Cartelera',
+        peliculas: (resNow.results || []).map((m) => mapearPeliculaTMDB(m)),
+      },
+      {
+        id: 'clasicos',
+        titulo: '🎞️ Clásicos Inolvidables del Cine',
+        peliculas: (resClasicos.results || []).map((m) => mapearPeliculaTMDB(m, 'Clásico')),
+      },
+    ];
 
-    const combinadas = [...listaSciFi, ...listaResto];
-    const unicas = [];
-    const vistos = new Set();
-
-    for (const p of combinadas) {
-      if (!vistos.has(p.tmdbId)) {
-        vistos.add(p.tmdbId);
-        unicas.push(p);
-      }
+    if (generoObj.id !== 878) {
+      secciones.push({
+        id: 'scifi',
+        titulo: '🚀 Ciencia Ficción Destacada',
+        peliculas: (resSciFi.results || []).map((m) => mapearPeliculaTMDB(m, 'Ciencia Ficción')),
+      });
     }
 
-    return unicas.length > 0 ? unicas : CATALOGO_RESPALDO;
+    return secciones;
   } catch (err) {
-    console.warn('No se pudo conectar con TMDB, usando catálogo local:', err);
-    return CATALOGO_RESPALDO;
+    console.warn('Usando secciones de respaldo local:', err);
+    return obtenerSeccionesCatalogoTMDB(' fallback ');
   }
 }
 
 export async function buscarPeliculasTMDB(termino) {
   const queryLimpio = termino.trim();
-  if (!queryLimpio) return obtenerCatalogoTMDB();
+  if (!queryLimpio) return CATALOGO_RESPALDO;
 
   if (!tieneClaveTMDB) {
     return CATALOGO_RESPALDO.filter(
@@ -347,7 +464,12 @@ export async function buscarPeliculasTMDB(termino) {
 
 export async function obtenerDetalleCompletoPelicula(pelicula) {
   if (!tieneClaveTMDB || !pelicula.tmdbId) {
-    return pelicula;
+    const respaldo = CATALOGO_RESPALDO.find((c) => Number(c.tmdbId) === Number(pelicula.tmdbId));
+    return {
+      ...respaldo,
+      ...pelicula,
+      duracion: Number(pelicula.duracion) || respaldo?.duracion || 124,
+    };
   }
 
   try {
@@ -360,7 +482,7 @@ export async function obtenerDetalleCompletoPelicula(pelicula) {
 
     return {
       ...pelicula,
-      duracion: data.runtime || pelicula.duracion || 120,
+      duracion: Number(data.runtime) || Number(pelicula.duracion) || 124,
       genero: generosTexto || pelicula.genero || 'General',
       director: directorObj ? directorObj.name : pelicula.director || 'No especificado',
       cast: actores || pelicula.cast || 'No especificado',

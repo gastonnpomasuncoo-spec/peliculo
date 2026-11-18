@@ -6,16 +6,16 @@ export const NIVELES = [
     max: 49,
     colorMarco: '#374151',
     sombraMarco: 'rgba(17, 24, 39, 0.9)',
-    nombreColor: 'Gris',
+    nombreColor: 'Gris Grafito',
   },
   {
     nivel: 2,
     nombre: 'Medio pichi',
     min: 50,
     max: 99,
-    colorMarco: '#EAB308',
-    sombraMarco: 'rgba(234, 179, 8, 0.55)',
-    nombreColor: 'Amarillo',
+    colorMarco: '#CD7F32',
+    sombraMarco: 'rgba(205, 127, 50, 0.65)',
+    nombreColor: 'Bronce',
   },
   {
     nivel: 3,
@@ -33,7 +33,7 @@ export const NIVELES = [
     max: 999,
     colorMarco: '#E2E8F0',
     sombraMarco: 'rgba(226, 232, 240, 0.85)',
-    nombreColor: 'Plateado',
+    nombreColor: 'Plateado Brillante',
   },
   {
     nivel: 5,
@@ -83,7 +83,6 @@ export function obtenerNivelUsuario(cantidadVistas) {
   };
 }
 
-// Calcula el progreso visual por tramos para que se evidencien los espacios entre los 5 niveles
 export function calcularPorcentajeEscalaTramos(cantidadVistas) {
   const v = Math.max(0, Number(cantidadVistas) || 0);
   const metas = [0, 50, 100, 300, 1000];

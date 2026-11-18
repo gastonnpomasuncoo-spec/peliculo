@@ -6,6 +6,8 @@ function ProfileView({
   nombreUsuario,
   fotoPerfil,
   nivelInfo,
+  diasRegistrado,
+  horasVistas,
   mesaDeLuz,
   historialPeliculas,
   onEliminarPelicula,
@@ -23,51 +25,70 @@ function ProfileView({
 
   return (
     <section className="view-container">
-      {/* CABECERA DE PERFIL CON HOVER PARA AGREGAR/EDITAR IMAGEN Y MARCOS DIFERENCIADOS */}
+      {/* CABECERA DE PERFIL: AVATAR + NOMBRE/NIVEL A LA IZQUIERDA | ESTADÍSTICAS A LA DERECHA */}
       <div className="profile-header">
-        <div
-          className={`profile-avatar-frame nivel-frame-${nivelInfo.nivel}`}
-          style={{
-            borderColor: nivelInfo.colorMarco,
-            boxShadow: `0 0 24px ${nivelInfo.sombraMarco}`,
-          }}
-          onClick={onAbrirConfiguracionFoto}
-          title="Hacé clic para cambiar tu foto de perfil"
-        >
-          {fotoPerfil ? (
-            <img
-              src={fotoPerfil}
-              alt={nombreUsuario}
-              className="profile-avatar-img"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = '';
-              }}
-            />
-          ) : (
-            <svg viewBox="0 0 24 24" className="profile-avatar-svg" fill="currentColor">
-              <path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z" />
-            </svg>
-          )}
+        <div className="profile-header-left">
+          <div
+            className={`profile-avatar-frame nivel-frame-${nivelInfo.nivel}`}
+            style={{
+              borderColor: nivelInfo.colorMarco,
+              boxShadow: `0 0 24px ${nivelInfo.sombraMarco}`,
+            }}
+            onClick={onAbrirConfiguracionFoto}
+            title="Hacé clic para cambiar tu foto de perfil"
+          >
+            {fotoPerfil ? (
+              <img
+                src={fotoPerfil}
+                alt={nombreUsuario}
+                className="profile-avatar-img"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = '';
+                }}
+              />
+            ) : (
+              <svg viewBox="0 0 24 24" className="profile-avatar-svg" fill="currentColor">
+                <path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z" />
+              </svg>
+            )}
 
-          {/* Texto en hover: Editar imagen si ya tiene, o Agregar imagen si no tiene */}
-          <div className="avatar-hover-overlay">
-            <span>{fotoPerfil ? 'Editar imagen' : 'Agregar imagen'}</span>
+            <div className="avatar-hover-overlay">
+              <span>{fotoPerfil ? 'Editar imagen' : 'Agregar imagen'}</span>
+            </div>
+          </div>
+
+          <div className="profile-user-details">
+            <h1 className="profile-username">{nombreUsuario}</h1>
+            <div className="profile-rank-badge" style={{ borderColor: nivelInfo.colorMarco }}>
+              <span className="rank-dot" style={{ backgroundColor: nivelInfo.colorMarco }} />
+              <span>
+                Nivel {nivelInfo.nivel}: <strong>{nivelInfo.nombre}</strong>
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="profile-user-details">
-          <h1 className="profile-username">{nombreUsuario}</h1>
-          <div className="profile-rank-badge" style={{ borderColor: nivelInfo.colorMarco }}>
-            <span className="rank-dot" style={{ backgroundColor: nivelInfo.colorMarco }} />
-            <span>
-              Nivel {nivelInfo.nivel}: <strong>{nivelInfo.nombre}</strong> · Marco {nivelInfo.nombreColor} ({nivelInfo.totalVistas} vistas)
-            </span>
+        {/* Bloque de estadísticas estilo referencia (arriba a la derecha) */}
+        <div className="profile-stats-bar">
+          <div className="profile-stat-item">
+            <span className="profile-stat-number">{nivelInfo.totalVistas}</span>
+            <span className="profile-stat-label">PELÍCULAS VISTAS</span>
+          </div>
+          <div className="profile-stat-divider" />
+          <div className="profile-stat-item">
+            <span className="profile-stat-number">{diasRegistrado}</span>
+            <span className="profile-stat-label">DÍAS</span>
+          </div>
+          <div className="profile-stat-divider" />
+          <div className="profile-stat-item">
+            <span className="profile-stat-number">{horasVistas}</span>
+            <span className="profile-stat-label">HORAS VISTAS</span>
           </div>
         </div>
       </div>
 
-      {/* ZONA CENTRAL: MESA DE LUZ A LA IZQUIERDA + PROGRESO DE NIVEL / LA CABRA A LA DERECHA */}
+      {/* ZONA CENTRAL: MESA DE LUZ (3x160px) A LA IZQUIERDA + PROGRESO DE NIVEL A LA DERECHA */}
       <div className="profile-middle-grid">
         <div className="profile-mesa-block">
           <div className="profile-mini-cards">
@@ -100,7 +121,6 @@ function ProfileView({
           <p className="profile-mesa-caption">mesa de luz</p>
         </div>
 
-        {/* En vez del objetivo, muestra cuánto falta para el siguiente nivel o el mensaje de La Cabra en Nivel 5 */}
         <div className="profile-progress-block">
           {nivelInfo.esNivelMaximo ? (
             <div className="goat-celebration-box">
@@ -177,7 +197,7 @@ function ProfileView({
         </div>
       </div>
 
-      {/* HISTORIAL CON BOTÓN "VER MÁS" DESPUÉS DE VARIAS PELÍCULAS */}
+      {/* HISTORIAL CON BOTÓN "VER MÁS" */}
       <div className="historial-section">
         <h2 className="section-title">
           Historial (Proyectadas y Abandonadas) ({historialPeliculas.length})
@@ -205,6 +225,9 @@ function ProfileView({
                     >
                       {item.titulo}
                     </strong>
+                    {item.duracion && (
+                      <span className="historial-duration">({item.duracion} min)</span>
+                    )}
                     {item.estado === 'vista' && item.puntaje > 0 && (
                       <span className="stars-inline">{'★'.repeat(item.puntaje)}</span>
                     )}
@@ -216,7 +239,7 @@ function ProfileView({
                     className="btn-delete"
                     disabled={procesando}
                     onClick={() => onEliminarPelicula(item.id)}
-                    title="Eliminar registro de Firebase"
+                    title="Eliminar registro"
                   >
                     Eliminar
                   </button>

@@ -51,14 +51,13 @@ function Navbar({
           Perfil
         </button>
 
-        {/* Ícono de Configuración independiente (fuera de Perfil) */}
         <div className="config-dropdown-wrapper">
           <button
             type="button"
             className="config-icon-btn"
             onClick={() => setMenuAbierto(!menuAbierto)}
             aria-label="Abrir menú de configuración"
-            title="Configuración y opciones"
+            title="Configuración y soporte"
           >
             ⚙️
           </button>
@@ -73,6 +72,9 @@ function Navbar({
               </button>
               <button type="button" onClick={() => seleccionarOpcionMenu('sos')}>
                 SOS
+              </button>
+              <button type="button" onClick={() => seleccionarOpcionMenu('soporte')}>
+                Soporte técnico
               </button>
 
               {!esUsuarioRegistrado ? (

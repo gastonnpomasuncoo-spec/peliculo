@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { generarPosterRespaldo } from '../services/tmdb';
+import { generarPosterRespaldo, GENEROS_DISPONIBLES } from '../services/tmdb';
 
 const AVATARES_PREDEFINIDOS = [
   'https://api.dicebear.com/7.x/bottts/svg?seed=Peliculo1',
@@ -14,8 +14,8 @@ function MenuModals({
   nombreUsuario,
   fotoPerfil,
   generoPreferido,
-  vistasExtraSimuladas,
   onGuardarPerfilConfig,
+  onEnviarSoporte,
   mesaDeLuz,
   peliculaDetalle,
   cerrarDetallePelicula,
@@ -29,11 +29,14 @@ function MenuModals({
   const [apodo, setApodo] = useState(nombreUsuario);
   const [fotoInput, setFotoInput] = useState(fotoPerfil || '');
   const [genero, setGenero] = useState(generoPreferido || 'Ciencia Ficción');
-  const [simulacionVistas, setSimulacionVistas] = useState(vistasExtraSimuladas || 0);
   const [elegidaSOS, setElegidaSOS] = useState(null);
 
-  // Estados para Iniciar Sesión / Registrarse en el modal de bienvenida
-  const [modoAuth, setModoAuth] = useState('bienvenida'); // 'bienvenida' | 'login' | 'registro'
+  // Estados para Soporte Técnico
+  const [asuntoSoporte, setAsuntoSoporte] = useState('Problema técnico con la página');
+  const [mensajeSoporte, setMensajeSoporte] = useState('');
+  const [soporteEnviado, setSoporteEnviado] = useState(false);
+
+  const [modoAuth, setModoAuth] = useState('bienvenida');
   const [emailAuth, setEmailAuth] = useState('');
   const [passwordAuth, setPasswordAuth] = useState('');
   const [nombreRegistro, setNombreRegistro] = useState('');
@@ -42,8 +45,9 @@ function MenuModals({
     setApodo(nombreUsuario);
     setFotoInput(fotoPerfil || '');
     setGenero(generoPreferido || 'Ciencia Ficción');
-    setSimulacionVistas(vistasExtraSimuladas || 0);
-  }, [nombreUsuario, fotoPerfil, generoPreferido, vistasExtraSimuladas, modalActivo]);
+    setSoporteEnviado(false);
+    setMensajeSoporte('');
+  }, [nombreUsuario, fotoPerfil, generoPreferido, modalActivo]);
 
   useEffect(() => {
     if (modalBienvenidaAbierto) {
@@ -69,9 +73,21 @@ function MenuModals({
       apodo: apodo.trim() || nombreUsuario,
       fotoPerfil: fotoInput.trim(),
       generoPreferido: genero,
-      vistasExtraSimuladas: Math.max(0, Number(simulacionVistas) || 0),
     });
     cerrarModal();
+  };
+
+  const enviarFormularioSoporte = async (e) => {
+    e.preventDefault();
+    if (!mensajeSoporte.trim()) return;
+    if (onEnviarSoporte) {
+      await onEnviarSoporte({
+        asunto: asuntoSoporte,
+        mensaje: mensajeSoporte.trim(),
+      });
+    }
+    setSoporteEnviado(true);
+    setMensajeSoporte('');
   };
 
   const tirarRuletaSOS = () => {
@@ -113,7 +129,7 @@ function MenuModals({
                 <h2 className="movie-detail-title">{peliculaDetalle.titulo}</h2>
                 <div className="movie-detail-meta">
                   <span className="meta-chip">📅 Estreno: {peliculaDetalle.anio || '2024'}</span>
-                  <span className="meta-chip">⏱ Duración: {peliculaDetalle.duracion || 125} min</span>
+                  <span className="meta-chip">⏱ Duración: {peliculaDetalle.duracion || 124} min</span>
                   <span className="meta-chip">🎬 {peliculaDetalle.genero || 'General'}</span>
                 </div>
 
@@ -263,7 +279,7 @@ function MenuModals({
         </div>
       )}
 
-      {/* 3. MODALES DEL MENÚ DE CONFIGURACIÓN (CONFIGURACIÓN, PREFERENCIAS, SOS) */}
+      {/* 3. MODALES DE CONFIGURACIÓN, PREFERENCIAS, SOS Y SOPORTE TÉCNICO */}
       {modalActivo && (
         <div className="modal-backdrop" onClick={cerrarModal}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -327,22 +343,6 @@ function MenuModals({
                   ))}
                 </div>
 
-                <label className="form-label">
-                  Simulador de Películas Vistas (para probar los 5 niveles y La Cabra 🐐)
-                  <select
-                    value={simulacionVistas}
-                    onChange={(e) => setSimulacionVistas(Number(e.target.value))}
-                    className="form-input"
-                  >
-                    <option value={0}>Nivel 1: Pichi (0 vistas - Marco Gris Grafito)</option>
-                    <option value={25}>Nivel 1: Pichi en progreso (25 vistas)</option>
-                    <option value={60}>Nivel 2: Medio pichi (60 vistas - Marco Amarillo)</option>
-                    <option value={150}>Nivel 3: Capo (150 vistas - Marco Azul)</option>
-                    <option value={450}>Nivel 4: Tipazo (450 vistas - Marco Plateado)</option>
-                    <option value={1050}>Nivel 5: The King / La Cabra 🐐 (1050 vistas - Dorado)</option>
-                  </select>
-                </label>
-
                 <div className="modal-actions">
                   <button type="button" className="btn-secondary" onClick={cerrarModal}>
                     Cancelar
@@ -358,15 +358,17 @@ function MenuModals({
               <form onSubmit={guardarConfig} className="objetivo-form" autoComplete="off">
                 <h3 className="box-title">Preferencias de Catálogo</h3>
                 <label className="form-label">
-                  Género favorito para destacar en Descubrir
+                  Género favorito para el primer carrusel de Descubrir
                   <select
                     value={genero}
                     onChange={(e) => setGenero(e.target.value)}
                     className="form-input"
                   >
-                    <option value="Ciencia Ficción">Ciencia Ficción</option>
-                    <option value="Thriller / Drama">Thriller / Drama</option>
-                    <option value="Drama / Fantasía">Drama / Fantasía</option>
+                    {GENEROS_DISPONIBLES.map((g) => (
+                      <option key={g.id} value={g.nombre}>
+                        {g.nombre}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <div className="modal-actions">
@@ -413,6 +415,67 @@ function MenuModals({
                     Listo
                   </button>
                 </div>
+              </div>
+            )}
+
+            {modalActivo === 'soporte' && (
+              <div className="objetivo-form">
+                <h3 className="box-title">🛠️ Soporte Técnico</h3>
+                <p className="modal-helper">
+                  ¿Tuviste algún inconveniente con la página o con una película? Escribinos acá abajo o comunicate a <strong>soporte@peliculo.app</strong> y te ayudamos.
+                </p>
+
+                {soporteEnviado ? (
+                  <div className="sos-result-card">
+                    <h4>¡Mensaje recibido!</h4>
+                    <p>
+                      Registramos tu consulta para el usuario <strong>{nombreUsuario}</strong>. Nuestro equipo técnico la revisará a la brevedad.
+                    </p>
+                    <div className="modal-actions" style={{ justifyContent: 'center', marginTop: '0.8rem' }}>
+                      <button type="button" className="btn-accent" onClick={cerrarModal}>
+                        Cerrar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={enviarFormularioSoporte} className="objetivo-form" autoComplete="off">
+                    <label className="form-label">
+                      Motivo de la consulta
+                      <select
+                        value={asuntoSoporte}
+                        onChange={(e) => setAsuntoSoporte(e.target.value)}
+                        className="form-input"
+                      >
+                        <option value="Problema técnico con la página">Problema técnico con la página</option>
+                        <option value="Error al cargar o guardar una película">Error al cargar o guardar una película</option>
+                        <option value="Problema con mi perfil u objetivos">Problema con mi perfil u objetivos</option>
+                        <option value="Sugerencia o comentario">Sugerencia o comentario</option>
+                      </select>
+                    </label>
+
+                    <label className="form-label">
+                      Describí tu problema
+                      <textarea
+                        rows="4"
+                        autoComplete="off"
+                        value={mensajeSoporte}
+                        onChange={(e) => setMensajeSoporte(e.target.value)}
+                        placeholder="Contanos qué pasó para poder ayudarte..."
+                        className="form-input"
+                        required
+                      />
+                    </label>
+
+                    <div className="modal-actions">
+                      <button type="button" className="btn-secondary" onClick={cerrarModal}>
+                        Cancelar
+                      </button>
+                      <button type="submit" className="btn-accent">
+                        Enviar a Soporte
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             )}
           </div>
