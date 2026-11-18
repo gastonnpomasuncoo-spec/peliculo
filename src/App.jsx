@@ -196,7 +196,7 @@ const totalMinutosVistos = peliculasVistas.reduce(
   );
   const horasEnteras = Math.floor(totalMinutosVistos / 60);
   const minutosRestantes = totalMinutosVistos % 60;
-  const horasVistas = `${horasEnteras}:${String(minutosRestantes).padStart(2, '0')}`;
+  const horasVistas = `${horasEnteras} hr ${minutosRestantes} min`;
 
   const nombreUsuarioVisible =
     perfilConfig.apodo ||
@@ -577,7 +577,7 @@ const totalMinutosVistos = peliculasVistas.reduce(
   if (cargandoAuth) {
     return (
       <div className="fullscreen-loader">
-        <h1 className="brand-logo">PELICULO :V</h1>
+        <h1 className="brand-logo">PELICULO</h1>
         <p>Cargando aplicación...</p>
       </div>
     );

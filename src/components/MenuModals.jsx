@@ -180,9 +180,9 @@ function MenuModals({
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             {modoAuth === 'bienvenida' && (
               <div className="objetivo-form welcome-modal-content">
-                <h3 className="box-title">¡Bienvenido a Peliculo :V!</h3>
+                <h3 className="box-title">¡Bienvenido a Peliculo!</h3>
                 <p className="welcome-message-text">
-                  “Bienvenido :V Si queres guardar películas inicia sesión o regístrate en el caso de no tener una cuenta.”
+                  “Bienvenido! Si queres guardar películas inicia sesión o regístrate en el caso de no tener una cuenta.”
                 </p>
 
                 <div className="welcome-buttons-row">

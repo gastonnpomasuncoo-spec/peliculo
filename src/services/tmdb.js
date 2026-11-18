@@ -74,7 +74,7 @@ export function generarPosterRespaldo(titulo = 'Peliculo') {
     </defs>
     <rect width="500" height="750" fill="url(#bg)"/>
     <rect x="24" y="24" width="452" height="702" fill="none" stroke="#EAB308" stroke-width="3" stroke-dasharray="10,8"/>
-    <text x="250" y="330" text-anchor="middle" fill="#EAB308" font-family="sans-serif" font-size="38" font-weight="bold">PELICULO :V</text>
+    <text x="250" y="330" text-anchor="middle" fill="#EAB308" font-family="sans-serif" font-size="38" font-weight="bold">PELICULO</text>
     <text x="250" y="400" text-anchor="middle" fill="#F4F4F4" font-family="sans-serif" font-size="22">${textoLimpio}</text>
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
@@ -369,22 +369,22 @@ export async function obtenerSeccionesCatalogoTMDB(generoPreferidoNombre = 'Cien
       },
       {
         id: 'aclamadas',
-        titulo: '🏆 Películas Aclamadas por la Crítica',
+        titulo: 'Películas Aclamadas por la Crítica',
         peliculas: CATALOGO_RESPALDO.filter((p) => p.categoria === 'aclamadas' || p.duracion > 135),
       },
       {
         id: 'lanzamientos',
-        titulo: '🔥 Nuevos Lanzamientos y Tendencias',
+        titulo: 'Nuevos Lanzamientos y Tendencias',
         peliculas: CATALOGO_RESPALDO.filter((p) => Number(p.anio) >= 2021),
       },
       {
         id: 'clasicos',
-        titulo: '🎞️ Clásicos del Cine',
+        titulo: 'Clásicos del Cine',
         peliculas: CATALOGO_RESPALDO.filter((p) => Number(p.anio) <= 2010),
       },
       {
         id: 'scifi',
-        titulo: '🚀 Universo Ciencia Ficción',
+        titulo: 'Universo Ciencia Ficción',
         peliculas: CATALOGO_RESPALDO.filter((p) => p.genero.includes('Ciencia Ficción')),
       },
     ];
@@ -395,7 +395,7 @@ export async function obtenerSeccionesCatalogoTMDB(generoPreferidoNombre = 'Cien
       fetchTMDB(`/discover/movie?language=es-ES&with_genres=${generoObj.id}&sort_by=popularity.desc&page=1`),
       fetchTMDB('/movie/top_rated?language=es-ES&page=1'),
       fetchTMDB('/movie/now_playing?language=es-ES&page=1'),
-      fetchTMDB('/discover/movie?language=es-ES& primary_release_date.lte=2005-12-31&sort_by=vote_count.desc&page=1'),
+      fetchTMDB('/discover/movie?language=es-ES&primary_release_date.lte=2005-12-31&sort_by=vote_count.desc&page=1'),
       fetchTMDB('/discover/movie?language=es-ES&with_genres=878&sort_by=vote_count.desc&page=1'),
     ]);
 
@@ -407,17 +407,17 @@ export async function obtenerSeccionesCatalogoTMDB(generoPreferidoNombre = 'Cien
       },
       {
         id: 'aclamadas',
-        titulo: '🏆 Películas Aclamadas por la Crítica',
+        titulo: 'Películas Aclamadas por la Crítica',
         peliculas: (resTop.results || []).map((m) => mapearPeliculaTMDB(m)),
       },
       {
         id: 'lanzamientos',
-        titulo: '🔥 Nuevos Lanzamientos en Cartelera',
+        titulo: 'Nuevos Lanzamientos en Cartelera',
         peliculas: (resNow.results || []).map((m) => mapearPeliculaTMDB(m)),
       },
       {
         id: 'clasicos',
-        titulo: '🎞️ Clásicos Inolvidables del Cine',
+        titulo: 'Clásicos Inolvidables del Cine',
         peliculas: (resClasicos.results || []).map((m) => mapearPeliculaTMDB(m, 'Clásico')),
       },
     ];
@@ -425,7 +425,7 @@ export async function obtenerSeccionesCatalogoTMDB(generoPreferidoNombre = 'Cien
     if (generoObj.id !== 878) {
       secciones.push({
         id: 'scifi',
-        titulo: '🚀 Ciencia Ficción Destacada',
+        titulo: 'Ciencia Ficción Destacada',
         peliculas: (resSciFi.results || []).map((m) => mapearPeliculaTMDB(m, 'Ciencia Ficción')),
       });
     }

@@ -1,4 +1,4 @@
-# 🎬 Peliculo :V — Tu Mesa de Luz Cinéfila
+# 🎬 Peliculo — Tu Mesa de Luz Cinéfila
 
 Aplicación web desarrollada con **React + Vite**, conectada en tiempo real a **Firebase (Authentication y Cloud Firestore)** y a la API de **TMDB**, desplegada en **Vercel** para la materia *Desarrollo Frontend II* (UADE).
 

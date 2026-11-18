@@ -23,7 +23,7 @@ function Navbar({
   return (
     <header className="navbar">
       <div className="navbar-left" onClick={() => navegarA('home')}>
-        <span className="brand-logo">PELICULO :V</span>
+        <span className="brand-logo">PELICULO</span>
       </div>
 
       <nav className="navbar-links">
