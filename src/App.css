@@ -1337,7 +1337,7 @@ h1, h2, h3, h4, .brand-logo {
 .profile-mini-poster-card,
 .profile-mini-poster-empty {
   width: 160px;
-  height: 300px;
+  height: 320px;
   background-color: var(--bg-secondary);
   border-radius: 8px;
   overflow: hidden;
