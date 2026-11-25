@@ -19,7 +19,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db, firebaseListo } from './firebase/config';
 import { obtenerNivelUsuario } from './utils/niveles';
-import { obtenerDetalleCompletoPelicula } from './services/tmdb';
+import { obtenerDetalleCompletoPelicula, obtenerKeywordsTMDB } from './services/tmdb';
 import Navbar from './components/Navbar';
 import HomeView from './components/HomeView';
 import DiscoverView from './components/DiscoverView';
@@ -46,7 +46,6 @@ function App() {
   const [errorAuth, setErrorAuth] = useState('');
   const [peliculaDetalle, setPeliculaDetalle] = useState(null);
 
-  // Modal compartido entre Home y Perfil para marcar Vista o Desechar
   const [modalAccion, setModalAccion] = useState(null);
 
   const [peliculas, setPeliculas] = useState([]);
@@ -169,10 +168,12 @@ function App() {
     };
   }, [usuario]);
 
-  // Todas las películas pendientes (ordenadas de más vieja a más nueva) para filtrar por Mood
+  // Todas las películas pendientes ordenadas de más antigua a más nueva
   const peliculasPendientes = peliculas.filter(
     (p) => p.estado === 'mesa_de_luz' || p.estado === 'en_espera'
   );
+
+  // Completa automáticamente las keywords de TMDB en películas guardadas anteriormente
   const idsKeywordsConsultadosRef = useRef(new Set());
 
   useEffect(() => {
@@ -201,6 +202,7 @@ function App() {
       }
     });
   }, [peliculasPendientes]);
+
   const mesaDeLuz = peliculas.filter((p) => p.estado === 'mesa_de_luz').slice(0, 3);
   const cajonDeEspera = peliculas.filter((p) => p.estado === 'en_espera');
   const peliculasVistas = peliculas.filter((p) => p.estado === 'vista');
@@ -316,7 +318,7 @@ function App() {
     }
   };
 
-  // CRUD 1: Guardar película por tmdbId único
+  // CRUD 1: Guardar película con keywords para filtrar por vibra
   const agregarPelicula = async (datosPelicula) => {
     if (!esUsuarioRegistrado) {
       setModalBienvenidaAbierto(true);
@@ -335,7 +337,7 @@ function App() {
     try {
       const fichaCompleta = await obtenerDetalleCompletoPelicula(datosPelicula);
       const estadoInicial = mesaDeLuz.length < 3 ? 'mesa_de_luz' : 'en_espera';
-const nuevoDoc = {
+      const nuevoDoc = {
         uid: usuario.uid,
         tmdbId: Number(fichaCompleta.tmdbId || datosPelicula.tmdbId || Date.now()),
         titulo: fichaCompleta.titulo,
@@ -367,7 +369,6 @@ const nuevoDoc = {
     }
   };
 
-  // Promueve la siguiente película en espera solo si la película liberada ocupaba un lugar de mesa_de_luz
   const promoverSiguienteDelCajon = async (peliculaLiberada) => {
     if (peliculaLiberada.estado !== 'mesa_de_luz') return null;
 

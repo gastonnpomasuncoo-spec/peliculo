@@ -1,4 +1,3 @@
-import { obtenerDetalleCompletoPelicula, obtenerKeywordsTMDB } from './services/tmdb';
 const RAW_TMDB_KEY = import.meta.env.VITE_TMDB_API_KEY?.trim() || '';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 export const TMDB_IMG_BASE = 'https://image.tmdb.org/t/p/w500';
@@ -354,41 +353,45 @@ function mapearPeliculaTMDB(item, generoPorDefecto = '') {
   };
 }
 
+function obtenerSeccionesRespaldo(generoObj) {
+  return [
+    {
+      id: 'preferido',
+      titulo: `★ Tu Género Preferido: ${generoObj.nombre}`,
+      peliculas: CATALOGO_RESPALDO.filter((p) =>
+        p.genero.toLowerCase().includes(generoObj.nombre.split(' ')[0].toLowerCase())
+      ).concat(CATALOGO_RESPALDO.slice(0, 4)),
+    },
+    {
+      id: 'aclamadas',
+      titulo: 'Películas Aclamadas por la Crítica',
+      peliculas: CATALOGO_RESPALDO.filter((p) => p.categoria === 'aclamadas' || p.duracion > 135),
+    },
+    {
+      id: 'lanzamientos',
+      titulo: 'Nuevos Lanzamientos y Tendencias',
+      peliculas: CATALOGO_RESPALDO.filter((p) => Number(p.anio) >= 2021),
+    },
+    {
+      id: 'clasicos',
+      titulo: 'Clásicos del Cine',
+      peliculas: CATALOGO_RESPALDO.filter((p) => Number(p.anio) <= 2010),
+    },
+    {
+      id: 'scifi',
+      titulo: 'Universo Ciencia Ficción',
+      peliculas: CATALOGO_RESPALDO.filter((p) => p.genero.includes('Ciencia Ficción')),
+    },
+  ];
+}
+
 export async function obtenerSeccionesCatalogoTMDB(generoPreferidoNombre = 'Ciencia Ficción') {
   const generoObj =
     GENEROS_DISPONIBLES.find((g) => g.nombre === generoPreferidoNombre) ||
     GENEROS_DISPONIBLES[0];
 
   if (!tieneClaveTMDB) {
-    return [
-      {
-        id: 'preferido',
-        titulo: `★ Tu Género Preferido: ${generoObj.nombre}`,
-        peliculas: CATALOGO_RESPALDO.filter((p) =>
-          p.genero.toLowerCase().includes(generoObj.nombre.split(' ')[0].toLowerCase())
-        ).concat(CATALOGO_RESPALDO.slice(0, 4)),
-      },
-      {
-        id: 'aclamadas',
-        titulo: 'Películas Aclamadas por la Crítica',
-        peliculas: CATALOGO_RESPALDO.filter((p) => p.categoria === 'aclamadas' || p.duracion > 135),
-      },
-      {
-        id: 'lanzamientos',
-        titulo: 'Nuevos Lanzamientos y Tendencias',
-        peliculas: CATALOGO_RESPALDO.filter((p) => Number(p.anio) >= 2021),
-      },
-      {
-        id: 'clasicos',
-        titulo: 'Clásicos del Cine',
-        peliculas: CATALOGO_RESPALDO.filter((p) => Number(p.anio) <= 2010),
-      },
-      {
-        id: 'scifi',
-        titulo: 'Universo Ciencia Ficción',
-        peliculas: CATALOGO_RESPALDO.filter((p) => p.genero.includes('Ciencia Ficción')),
-      },
-    ];
+    return obtenerSeccionesRespaldo(generoObj);
   }
 
   try {
@@ -434,7 +437,7 @@ export async function obtenerSeccionesCatalogoTMDB(generoPreferidoNombre = 'Cien
     return secciones;
   } catch (err) {
     console.warn('Usando secciones de respaldo local:', err);
-    return obtenerSeccionesCatalogoTMDB(' fallback ');
+    return obtenerSeccionesRespaldo(generoObj);
   }
 }
 
