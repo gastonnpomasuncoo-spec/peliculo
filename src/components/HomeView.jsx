@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import MovieCard from './MovieCard';
+import { MOODS, filtrarMesaPorMood } from '../utils/moods';
 
 function HomeView({
-  mesaDeLuz,
-  cantidadCajon,
+  pendientes,
   objetivosActivos,
   avisosObjetivosVencidos,
   onDescartarAvisoVencido,
   peliculasVistasCount,
-  onCompletarPelicula,
-  onAbandonarPelicula,
+  onSolicitarCompletar,
+  onSolicitarAbandonar,
   onAgregarObjetivo,
   onEditarObjetivo,
   onSimularFinPlazoObjetivo,
@@ -17,13 +17,17 @@ function HomeView({
   irADescubrir,
   procesando,
 }) {
-  const [modalAccion, setModalAccion] = useState(null);
-  const [puntaje, setPuntaje] = useState(0);
-  const [comentario, setComentario] = useState('');
-  const [motivoAbandono, setMotivoAbandono] = useState('Me aburrió a los 30 min');
+  // Arranca en null para mostrar primero la pregunta "¿Qué quieres ver hoy?"
+  const [moodSeleccionado, setMoodSeleccionado] = useState(null);
+  const [dropdownMoodAbierto, setDropdownMoodAbierto] = useState(false);
+  const dropdownMoodRef = useRef(null);
 
-  const [popupCajonAbierto, setPopupCajonAbierto] = useState(false);
+  // Estados para la animación del Cajón Oculto debajo de la Mesa de Luz
+  const [cajonAnimando, setCajonAnimando] = useState(false);
+  const [mensajeCajonVisible, setMensajeCajonVisible] = useState(false);
+  const timerCajonRef = useRef(null);
 
+  // Estados de Objetivos
   const [nombreNuevoObj, setNombreNuevoObj] = useState('');
   const [metaInput, setMetaInput] = useState('');
   const [plazoMeses, setPlazoMeses] = useState(2);
@@ -32,6 +36,46 @@ function HomeView({
   const [objetivoEditando, setObjetivoEditando] = useState(null);
   const [editMeta, setEditMeta] = useState('');
   const [editPlazo, setEditPlazo] = useState(12);
+
+  useEffect(() => {
+    const manejarClickAfuera = (e) => {
+      if (dropdownMoodRef.current && !dropdownMoodRef.current.contains(e.target)) {
+        setDropdownMoodAbierto(false);
+      }
+    };
+    document.addEventListener('mousedown', manejarClickAfuera);
+    return () => {
+      document.removeEventListener('mousedown', manejarClickAfuera);
+      if (timerCajonRef.current) clearTimeout(timerCajonRef.current);
+    };
+  }, []);
+
+  const moodActualObj = MOODS.find((m) => m.id === moodSeleccionado) || null;
+  const peliculasEnMesa = moodSeleccionado
+    ? filtrarMesaPorMood(pendientes, moodSeleccionado)
+    : [];
+  const cantidadEnCajon = moodSeleccionado
+    ? Math.max(0, pendientes.length - peliculasEnMesa.length)
+    : Math.max(0, pendientes.length - 3);
+
+  const elegirMood = (idMood) => {
+    setMoodSeleccionado(idMood);
+    setDropdownMoodAbierto(false);
+    setMensajeCajonVisible(false);
+  };
+
+  // Animación de cajón trabado: intenta abrir ~1 segundo, no cede y luego despliega el mensaje suave
+  const intentarAbrirCajon = () => {
+    if (cajonAnimando) return;
+    setMensajeCajonVisible(false);
+    setCajonAnimando(true);
+
+    if (timerCajonRef.current) clearTimeout(timerCajonRef.current);
+    timerCajonRef.current = setTimeout(() => {
+      setCajonAnimando(false);
+      setMensajeCajonVisible(true);
+    }, 950);
+  };
 
   const manejarCambioMeta = (e) => {
     const valor = e.target.value.replace(/\D/g, '').slice(0, 4);
@@ -80,90 +124,197 @@ function HomeView({
     setObjetivoEditando(null);
   };
 
-  const abrirModalCalificar = (pelicula) => {
-    setPuntaje(0);
-    setComentario('');
-    setModalAccion({ tipo: 'vista', pelicula });
-  };
-
-  const confirmarModal = async (e) => {
-    e.preventDefault();
-    if (!modalAccion) return;
-
-    if (modalAccion.tipo === 'vista') {
-      await onCompletarPelicula(modalAccion.pelicula, puntaje, comentario.trim());
-    } else {
-      await onAbandonarPelicula(
-        modalAccion.pelicula,
-        motivoAbandono.trim() || 'Descartada de la Mesa de Luz'
-      );
-    }
-
-    setModalAccion(null);
-    setPuntaje(0);
-    setComentario('');
-  };
-
   const slots = [0, 1, 2];
 
   return (
     <section className="view-container">
-      <div className="section-header">
+      {/* CABECERA + BOTÓN DROPDOWN DE MOODS ARRIBA */}
+      <div className="section-header home-top-header">
         <div>
-          <h1 className="section-title">Tus próximas películas por ver</h1>
+          <h1 className="section-title">Tu Mesa de Luz</h1>
           <p className="section-subtitle">
-            Tu Mesa de Luz muestra hasta 3 películas en foco. Tocá cualquier póster para ver su ficha completa.
+            {moodActualObj
+              ? `Mostrando hasta 3 películas para el mood "${moodActualObj.nombre}". Tocá cualquier póster para ver su ficha completa.`
+              : 'Elegí tu mood de hoy para ver hasta 3 opciones sin perder tiempo scrolleando.'}
           </p>
         </div>
+
+        {moodSeleccionado && (
+          <div className="mood-dropdown-wrapper" ref={dropdownMoodRef}>
+            <button
+              type="button"
+              className="mood-dropdown-trigger"
+              onClick={() => setDropdownMoodAbierto(!dropdownMoodAbierto)}
+            >
+              <span className="mood-trigger-label">Mood:</span>
+              <strong>{moodActualObj?.nombre}</strong>
+              <span className="mood-caret">{dropdownMoodAbierto ? '▴' : '▾'}</span>
+            </button>
+
+            {dropdownMoodAbierto && (
+              <div className="mood-dropdown-menu">
+                {MOODS.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={`mood-dropdown-item ${moodSeleccionado === m.id ? 'active' : ''}`}
+                    onClick={() => elegirMood(m.id)}
+                  >
+                    <strong>{m.nombre}</strong>
+                    <span>{m.descripcion}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* MESA DE LUZ (3 SLOTS DE IGUAL ALTURA) + CAJÓN OCULTO CUADRADO Y COMPACTO */}
-      <div className="mesa-y-cajon-layout">
-        <div className="mesa-de-luz-grid">
-          {slots.map((index) => {
-            const peli = mesaDeLuz[index];
-            if (peli) {
-              return (
-                <div key={peli.id} className="slot-wrapper">
-                  <MovieCard
-                    pelicula={peli}
-                    modo="mesa_de_luz"
-                    procesando={procesando}
-                    onSeleccionarPelicula={onSeleccionarPelicula}
-                    onMarcarVista={abrirModalCalificar}
-                    onAbandonar={(p) => setModalAccion({ tipo: 'abandonada', pelicula: p })}
-                  />
-                  <span className="slot-label">Película {index + 1}</span>
-                </div>
-              );
-            }
+      {/* MUEBLE LITERAL: LA MESA DE LUZ CON PELÍCULAS ARRIBA Y CAJÓN OCULTO DEBAJO */}
+      <div className="nightstand-furniture">
+        {/* Halo suave de luz cálida superior */}
+        <div className="nightstand-lamp-glow" aria-hidden="true" />
 
-            return (
-              <div key={index} className="slot-wrapper">
-                <div className="empty-slot-card" onClick={irADescubrir}>
-                  <span className="empty-slot-icon">+</span>
-                  <p>Espacio libre en tu Mesa de Luz</p>
-                  <span className="empty-slot-cta">Ir a Descubrir →</span>
-                </div>
-                <span className="slot-label">Película {index + 1}</span>
+        {/* SUPERFICIE SUPERIOR DE LA MESA DE LUZ */}
+        <div className="nightstand-top-stage">
+          {!moodSeleccionado ? (
+            <div className="mood-selector-stage">
+              <h2 className="mood-question-title">¿Qué quieres ver hoy?</h2>
+              <p className="mood-question-subtitle">
+                Elegí cómo te sentís ahora y te traemos hasta 3 películas de tus pendientes sobre la mesa.
+              </p>
+
+              <div className="mood-options-grid">
+                {MOODS.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={`mood-choice-card ${m.id === 'todas' ? 'mood-choice-all' : ''}`}
+                    onClick={() => elegirMood(m.id)}
+                  >
+                    <span className="mood-choice-title">{m.nombre}</span>
+                    <span className="mood-choice-desc">{m.descripcion}</span>
+                  </button>
+                ))}
               </div>
-            );
-          })}
+            </div>
+          ) : peliculasEnMesa.length === 0 && pendientes.length > 0 && moodSeleccionado !== 'todas' ? (
+            <div className="mood-empty-match">
+              <h3>No tenés pendientes guardadas para "{moodActualObj?.nombre}"</h3>
+              <p>
+                Podés cambiar a otro mood, ver tus 3 películas más viejas o sumar nuevas desde Descubrir.
+              </p>
+              <div className="mood-empty-actions">
+                <button
+                  type="button"
+                  className="btn-accent"
+                  onClick={() => elegirMood('todas')}
+                >
+                  Ver las 3 más viejas (Todas)
+                </button>
+                <button type="button" className="btn-secondary" onClick={irADescubrir}>
+                  Ir a Descubrir →
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mesa-de-luz-grid">
+              {slots.map((index) => {
+                const peli = peliculasEnMesa[index];
+                if (peli) {
+                  return (
+                    <div key={peli.id} className="slot-wrapper">
+                      <MovieCard
+                        pelicula={peli}
+                        modo="mesa_de_luz"
+                        procesando={procesando}
+                        onSeleccionarPelicula={onSeleccionarPelicula}
+                        onMarcarVista={onSolicitarCompletar}
+                        onAbandonar={onSolicitarAbandonar}
+                      />
+                      <span className="slot-label">Película {index + 1}</span>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={index} className="slot-wrapper">
+                    <div className="empty-slot-card" onClick={irADescubrir}>
+                      <span className="empty-slot-icon">+</span>
+                      <p>Espacio libre en tu Mesa de Luz</p>
+                      <span className="empty-slot-cta">Ir a Descubrir →</span>
+                    </div>
+                    <span className="slot-label">Película {index + 1}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        <aside
-          className="cajon-oculto-sidecard"
-          onClick={() => setPopupCajonAbierto(true)}
-          title="Tocar para ver información del Cajón Oculto"
-        >
-          <div className="cajon-icon-circle">🔒</div>
-          <h3 className="cajon-side-title">Cajón Oculto</h3>
-          <span className="cajon-count-badge">
-            {cantidadCajon} en espera
-          </span>
-        </aside>
+        {/* TAPA DE MADERA DE LA MESA DE LUZ */}
+        <div className="nightstand-tabletop" />
+
+        {/* CUERPO INFERIOR DEL MUEBLE CON EL CAJÓN OCULTO */}
+        <div className="nightstand-cabinet">
+          <div className="nightstand-drawer-cavity">
+            <button
+              type="button"
+              className={`nightstand-drawer ${cajonAnimando ? 'intentando-abrir' : ''}`}
+              onClick={intentarAbrirCajon}
+              aria-label="Intentar abrir el Cajón Oculto"
+            >
+              {/* Manija/ranura calada estilo mesa de luz de madera */}
+              <div className="drawer-handle-notch" aria-hidden="true" />
+
+              <div className="drawer-front-content">
+                <div className="drawer-title-group">
+                  <span className="drawer-lock-icon">🔒</span>
+                  <span className="drawer-title">Cajón Oculto</span>
+                </div>
+                <span className="drawer-count-pill">
+                  {cantidadEnCajon} {cantidadEnCajon === 1 ? 'película en espera' : 'películas en espera'}
+                </span>
+                <span className="drawer-tap-hint">
+                  {cajonAnimando ? 'No cede...' : 'Tocá el cajón para intentar abrirlo'}
+                </span>
+              </div>
+            </button>
+          </div>
+
+          {/* Mensaje suave que aparece después de que el cajón no cede */}
+          <div
+            className={`cajon-smooth-reveal ${mensajeCajonVisible ? 'visible' : ''}`}
+            aria-live="polite"
+          >
+            <div className="cajon-smooth-inner">
+              <div className="cajon-smooth-texts">
+                <p className="cajon-smooth-quote">
+                  “Mirá tu mesa de luz para desbloquear más películas”
+                </p>
+                <p className="cajon-smooth-desc">
+                  El cajón permanece cerrado para que no acumules ruido visual. Cuando marques una de las películas de arriba como <strong>Vista</strong> o la <strong>Deseches</strong>, la siguiente en espera subirá automáticamente.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-secondary btn-xs"
+                onClick={() => setMensajeCajonVisible(false)}
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* PATAS / ZÓCALO DEL MUEBLE */}
+        <div className="nightstand-legs" aria-hidden="true">
+          <div className="nightstand-leg" />
+          <div className="nightstand-leg" />
+        </div>
       </div>
 
+      {/* SECCIÓN TUS OBJETIVOS */}
       <div className="objetivos-section">
         <h2 className="section-title">Tus objetivos</h2>
 
@@ -177,8 +328,8 @@ function HomeView({
                 <div>
                   <strong>
                     {aviso.cumplido
-                      ? `🎉 ¡Plazo finalizado! Cumpliste tu "${aviso.titulo}"`
-                      : `⏰ Terminó el plazo de "${aviso.titulo}"`}
+                      ? `¡Plazo finalizado! Cumpliste tu "${aviso.titulo}"`
+                      : `Terminó el plazo de "${aviso.titulo}"`}
                   </strong>
                   <p>
                     {aviso.cumplido
@@ -316,29 +467,6 @@ function HomeView({
         </div>
       </div>
 
-      {popupCajonAbierto && (
-        <div className="modal-backdrop" onClick={() => setPopupCajonAbierto(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3 className="box-title">🔒 Cajón Oculto ({cantidadCajon} en espera)</h3>
-            <p className="cajon-popup-highlight">
-              “Mirá tu mesa de luz para desbloquear más películas”
-            </p>
-            <p className="modal-helper">
-              Las películas extras quedan guardadas en este cajón secreto para evitar el ruido visual. Cuando marques una de las 3 películas de tu Mesa de Luz como <strong>Vista</strong> o la <strong>Deseches</strong>, la siguiente película más antigua subirá automáticamente.
-            </p>
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="btn-accent"
-                onClick={() => setPopupCajonAbierto(false)}
-              >
-                Entendido
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {objetivoEditando && (
         <div className="modal-backdrop" onClick={() => setObjetivoEditando(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -382,81 +510,6 @@ function HomeView({
                 </button>
                 <button type="submit" className="btn-accent">
                   Guardar cambios
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {modalAccion && (
-        <div className="modal-backdrop" onClick={() => setModalAccion(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3 className="box-title">
-              {modalAccion.tipo === 'vista'
-                ? `¡Terminaste "${modalAccion.pelicula.titulo}"!`
-                : `Desechar "${modalAccion.pelicula.titulo}"`}
-            </h3>
-
-            <form onSubmit={confirmarModal} className="objetivo-form" autoComplete="off">
-              {modalAccion.tipo === 'vista' ? (
-                <>
-                  <p className="modal-helper">
-                    Al marcarla como vista sumás +1 a tus objetivos activos y sus minutos se suman a tus horas vistas en el perfil.
-                  </p>
-                  <label className="form-label">
-                    Puntaje ({puntaje} de 5 estrellas)
-                    <div className="stars-selector">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          className={`star-btn ${puntaje >= star ? 'active' : ''}`}
-                          onClick={() => setPuntaje(star)}
-                        >
-                          ★
-                        </button>
-                      ))}
-                    </div>
-                  </label>
-
-                  <label className="form-label">
-                    Comentario (opcional)
-                    <textarea
-                      rows="3"
-                      autoComplete="off"
-                      value={comentario}
-                      onChange={(e) => setComentario(e.target.value)}
-                      placeholder="¿Qué te pareció la película?"
-                      className="form-input"
-                    />
-                  </label>
-                </>
-              ) : (
-                <>
-                  <p className="modal-helper">
-                    Liberás el lugar en tu Mesa de Luz sin culpa para que suba la siguiente película en espera.
-                  </p>
-                  <label className="form-label">
-                    Motivo de abandono
-                    <input
-                      type="text"
-                      autoComplete="off"
-                      value={motivoAbandono}
-                      onChange={(e) => setMotivoAbandono(e.target.value)}
-                      placeholder="Ej: Me aburrió a los 30 min"
-                      className="form-input"
-                    />
-                  </label>
-                </>
-              )}
-
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setModalAccion(null)}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn-accent" disabled={procesando}>
-                  Confirmar
                 </button>
               </div>
             </form>

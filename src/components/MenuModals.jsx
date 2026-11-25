@@ -25,11 +25,21 @@ function MenuModals({
   cerrarModalBienvenida,
   onAutenticarUsuario,
   errorAuth,
+  modalAccion,
+  cerrarModalAccion,
+  onCompletarPelicula,
+  onAbandonarPelicula,
+  procesando,
 }) {
   const [apodo, setApodo] = useState(nombreUsuario);
   const [fotoInput, setFotoInput] = useState(fotoPerfil || '');
   const [genero, setGenero] = useState(generoPreferido || 'Ciencia Ficción');
   const [elegidaSOS, setElegidaSOS] = useState(null);
+
+  // Estados del modal compartido para marcar Vista o Desechar (desde Home o Perfil)
+  const [puntaje, setPuntaje] = useState(0);
+  const [comentario, setComentario] = useState('');
+  const [motivoAbandono, setMotivoAbandono] = useState('Me aburrió a los 30 min');
 
   // Estados para Soporte Técnico
   const [asuntoSoporte, setAsuntoSoporte] = useState('Problema técnico con la página');
@@ -54,6 +64,14 @@ function MenuModals({
       setModoAuth('bienvenida');
     }
   }, [modalBienvenidaAbierto]);
+
+  useEffect(() => {
+    if (modalAccion) {
+      setPuntaje(0);
+      setComentario('');
+      setMotivoAbandono('Me aburrió a los 30 min');
+    }
+  }, [modalAccion]);
 
   const manejarSubidaArchivoFoto = (e) => {
     const archivo = e.target.files?.[0];
@@ -106,9 +124,101 @@ function MenuModals({
     });
   };
 
+  const confirmarAccionPelicula = async (e) => {
+    e.preventDefault();
+    if (!modalAccion) return;
+
+    if (modalAccion.tipo === 'vista') {
+      await onCompletarPelicula(modalAccion.pelicula, puntaje, comentario.trim());
+    } else {
+      await onAbandonarPelicula(
+        modalAccion.pelicula,
+        motivoAbandono.trim() || 'Descartada de la Mesa de Luz'
+      );
+    }
+
+    cerrarModalAccion();
+  };
+
   return (
     <>
-      {/* 1. MODAL DE FICHA TÉCNICA COMPLETA AL TOCAR UNA PELÍCULA */}
+      {/* 1. MODAL COMPARTIDO PARA CALIFICAR (VISTA) O DESECHAR (DESDE HOME O PERFIL) */}
+      {modalAccion && (
+        <div className="modal-backdrop" onClick={cerrarModalAccion}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 className="box-title">
+              {modalAccion.tipo === 'vista'
+                ? `¡Terminaste "${modalAccion.pelicula.titulo}"!`
+                : `Desechar "${modalAccion.pelicula.titulo}"`}
+            </h3>
+
+            <form onSubmit={confirmarAccionPelicula} className="objetivo-form" autoComplete="off">
+              {modalAccion.tipo === 'vista' ? (
+                <>
+                  <p className="modal-helper">
+                    Al marcarla como vista sumás +1 a tus objetivos activos y sus minutos se suman a tus horas vistas en el perfil.
+                  </p>
+                  <label className="form-label">
+                    Puntaje ({puntaje} de 5 estrellas)
+                    <div className="stars-selector">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          className={`star-btn ${puntaje >= star ? 'active' : ''}`}
+                          onClick={() => setPuntaje(star)}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                  </label>
+
+                  <label className="form-label">
+                    Comentario (opcional)
+                    <textarea
+                      rows="3"
+                      autoComplete="off"
+                      value={comentario}
+                      onChange={(e) => setComentario(e.target.value)}
+                      placeholder="¿Qué te pareció la película?"
+                      className="form-input"
+                    />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <p className="modal-helper">
+                    Liberás el lugar en tu Mesa de Luz sin culpa para que suba la siguiente película en espera.
+                  </p>
+                  <label className="form-label">
+                    Motivo de abandono
+                    <input
+                      type="text"
+                      autoComplete="off"
+                      value={motivoAbandono}
+                      onChange={(e) => setMotivoAbandono(e.target.value)}
+                      placeholder="Ej: Me aburrió a los 30 min"
+                      className="form-input"
+                    />
+                  </label>
+                </>
+              )}
+
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={cerrarModalAccion}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-accent" disabled={procesando}>
+                  Confirmar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. MODAL DE FICHA TÉCNICA COMPLETA AL TOCAR UNA PELÍCULA */}
       {peliculaDetalle && (
         <div className="modal-backdrop" onClick={cerrarDetallePelicula}>
           <div className="modal-card modal-movie-detail" onClick={(e) => e.stopPropagation()}>
@@ -174,7 +284,7 @@ function MenuModals({
         </div>
       )}
 
-      {/* 2. MODAL DE BIENVENIDA / INICIAR SESIÓN O REGISTRARSE */}
+      {/* 3. MODAL DE BIENVENIDA / INICIAR SESIÓN O REGISTRARSE */}
       {modalBienvenidaAbierto && (
         <div className="modal-backdrop" onClick={cerrarModalBienvenida}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -279,7 +389,7 @@ function MenuModals({
         </div>
       )}
 
-      {/* 3. MODALES DE CONFIGURACIÓN, PREFERENCIAS, SOS Y SOPORTE TÉCNICO */}
+      {/* 4. MODALES DE CONFIGURACIÓN, PREFERENCIAS, SOS Y SOPORTE TÉCNICO */}
       {modalActivo && (
         <div className="modal-backdrop" onClick={cerrarModal}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -431,14 +541,21 @@ function MenuModals({
                     <p>
                       Registramos tu consulta para el usuario <strong>{nombreUsuario}</strong>. Nuestro equipo técnico la revisará a la brevedad.
                     </p>
-                    <div className="modal-actions" style={{ justifyContent: 'center', marginTop: '0.8rem' }}>
+                    <div
+                      className="modal-actions"
+                      style={{ justifyContent: 'center', marginTop: '0.8rem' }}
+                    >
                       <button type="button" className="btn-accent" onClick={cerrarModal}>
                         Cerrar
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <form onSubmit={enviarFormularioSoporte} className="objetivo-form" autoComplete="off">
+                  <form
+                    onSubmit={enviarFormularioSoporte}
+                    className="objetivo-form"
+                    autoComplete="off"
+                  >
                     <label className="form-label">
                       Motivo de la consulta
                       <select
@@ -446,9 +563,15 @@ function MenuModals({
                         onChange={(e) => setAsuntoSoporte(e.target.value)}
                         className="form-input"
                       >
-                        <option value="Problema técnico con la página">Problema técnico con la página</option>
-                        <option value="Error al cargar o guardar una película">Error al cargar o guardar una película</option>
-                        <option value="Problema con mi perfil u objetivos">Problema con mi perfil u objetivos</option>
+                        <option value="Problema técnico con la página">
+                          Problema técnico con la página
+                        </option>
+                        <option value="Error al cargar o guardar una película">
+                          Error al cargar o guardar una película
+                        </option>
+                        <option value="Problema con mi perfil u objetivos">
+                          Problema con mi perfil u objetivos
+                        </option>
                         <option value="Sugerencia o comentario">Sugerencia o comentario</option>
                       </select>
                     </label>

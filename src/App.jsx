@@ -46,6 +46,9 @@ function App() {
   const [errorAuth, setErrorAuth] = useState('');
   const [peliculaDetalle, setPeliculaDetalle] = useState(null);
 
+  // Modal compartido entre Home y Perfil para marcar Vista o Desechar
+  const [modalAccion, setModalAccion] = useState(null);
+
   const [peliculas, setPeliculas] = useState([]);
   const [objetivosPersonalizados, setObjetivosPersonalizados] = useState([]);
   const [objetivoAnualConfig, setObjetivoAnualConfig] = useState(OBJETIVO_ANUAL_INICIAL);
@@ -61,7 +64,6 @@ function App() {
   const [procesando, setProcesando] = useState(false);
   const [notificacion, setNotificacion] = useState(null);
 
-  // Solo muestra alerta en caso de error real; nunca muestra notificaciones de guardado en Firebase
   const mostrarMensaje = (texto, tipo = 'exito') => {
     if (tipo !== 'error') return;
     setNotificacion({ texto, tipo });
@@ -70,7 +72,6 @@ function App() {
     }, 4000);
   };
 
-  // Al cambiar entre Home, Descubrir y Perfil, posiciona siempre la página arriba de todo
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [vistaActual]);
@@ -168,6 +169,10 @@ function App() {
     };
   }, [usuario]);
 
+  // Todas las películas pendientes (ordenadas de más vieja a más nueva) para filtrar por Mood
+  const peliculasPendientes = peliculas.filter(
+    (p) => p.estado === 'mesa_de_luz' || p.estado === 'en_espera'
+  );
   const mesaDeLuz = peliculas.filter((p) => p.estado === 'mesa_de_luz').slice(0, 3);
   const cajonDeEspera = peliculas.filter((p) => p.estado === 'en_espera');
   const peliculasVistas = peliculas.filter((p) => p.estado === 'vista');
@@ -177,7 +182,7 @@ function App() {
 
   const nivelInfo = obtenerNivelUsuario(peliculasVistas.length);
 
-  // Cálculo de DÍAS registrado y HORAS VISTAS para el Perfil
+  // Cálculo de DÍAS registrado y HORAS VISTAS en formato "12 hr 57 min"
   const fechaCreacionAuth = usuario?.metadata?.creationTime
     ? new Date(usuario.metadata.creationTime).getTime()
     : null;
@@ -190,7 +195,7 @@ function App() {
     Math.ceil((Date.now() - timestampRegistro) / (1000 * 60 * 60 * 24))
   );
 
-const totalMinutosVistos = peliculasVistas.reduce(
+  const totalMinutosVistos = peliculasVistas.reduce(
     (acc, p) => acc + (Number(p.duracion) || 124),
     0
   );
@@ -283,7 +288,7 @@ const totalMinutosVistos = peliculasVistas.reduce(
     }
   };
 
-  // CRUD 1: Guardar película identificándola por su tmdbId único y obteniendo su duración exacta
+  // CRUD 1: Guardar película por tmdbId único
   const agregarPelicula = async (datosPelicula) => {
     if (!esUsuarioRegistrado) {
       setModalBienvenidaAbierto(true);
@@ -291,7 +296,6 @@ const totalMinutosVistos = peliculasVistas.reduce(
     }
     if (!usuario) return;
 
-    // Verifica por tmdbId único que esa misma película no esté ya activa
     const yaExiste = peliculas.some(
       (p) =>
         (p.estado === 'mesa_de_luz' || p.estado === 'en_espera') &&
@@ -334,9 +338,12 @@ const totalMinutosVistos = peliculasVistas.reduce(
     }
   };
 
-  const promoverSiguienteDelCajon = async () => {
-    if (cajonDeEspera.length > 0) {
-      const siguiente = cajonDeEspera[0];
+  // Promueve la siguiente película en espera solo si la película liberada ocupaba un lugar de mesa_de_luz
+  const promoverSiguienteDelCajon = async (peliculaLiberada) => {
+    if (peliculaLiberada.estado !== 'mesa_de_luz') return null;
+
+    const siguiente = cajonDeEspera.find((p) => p.id !== peliculaLiberada.id);
+    if (siguiente) {
       if (firebaseListo && db) {
         await updateDoc(doc(db, 'peliculas', siguiente.id), {
           estado: 'mesa_de_luz',
@@ -382,7 +389,7 @@ const totalMinutosVistos = peliculasVistas.reduce(
           )
         );
       }
-      await promoverSiguienteDelCajon();
+      await promoverSiguienteDelCajon(pelicula);
     } catch (error) {
       console.error('Error al actualizar película:', error);
       mostrarMensaje('No se pudo actualizar el estado.', 'error');
@@ -410,7 +417,7 @@ const totalMinutosVistos = peliculasVistas.reduce(
           )
         );
       }
-      await promoverSiguienteDelCajon();
+      await promoverSiguienteDelCajon(pelicula);
     } catch (error) {
       console.error('Error al abandonar película:', error);
       mostrarMensaje('No se pudo modificar el registro.', 'error');
@@ -557,7 +564,7 @@ const totalMinutosVistos = peliculasVistas.reduce(
         creadoEn: Date.now(),
       });
     } catch {
-      // Si la colección soporte_tickets no está en reglas, confirma igualmente en interfaz
+      // Confirma igualmente en interfaz
     }
   };
 
@@ -607,16 +614,15 @@ const totalMinutosVistos = peliculasVistas.reduce(
       <main className="main-content">
         {vistaActual === 'home' && (
           <HomeView
-            mesaDeLuz={mesaDeLuz}
-            cantidadCajon={cajonDeEspera.length}
+            pendientes={peliculasPendientes}
             objetivosActivos={objetivosActivos}
             avisosObjetivosVencidos={avisosObjetivosVencidos}
             onDescartarAvisoVencido={(idAviso) =>
               setAvisosObjetivosVencidos((prev) => prev.filter((a) => a.id !== idAviso))
             }
             peliculasVistasCount={peliculasVistas.length}
-            onCompletarPelicula={completarPelicula}
-            onAbandonarPelicula={abandonarPelicula}
+            onSolicitarCompletar={(p) => setModalAccion({ tipo: 'vista', pelicula: p })}
+            onSolicitarAbandonar={(p) => setModalAccion({ tipo: 'abandonada', pelicula: p })}
             onAgregarObjetivo={agregarNuevoObjetivo}
             onEditarObjetivo={editarObjetivoExistente}
             onSimularFinPlazoObjetivo={finalizarPlazoObjetivo}
@@ -648,6 +654,8 @@ const totalMinutosVistos = peliculasVistas.reduce(
             onEliminarPelicula={eliminarPelicula}
             onAbrirConfiguracionFoto={() => setModalMenu('configuracion')}
             onSeleccionarPelicula={abrirDetallePelicula}
+            onSolicitarCompletar={(p) => setModalAccion({ tipo: 'vista', pelicula: p })}
+            onSolicitarAbandonar={(p) => setModalAccion({ tipo: 'abandonada', pelicula: p })}
             procesando={procesando}
           />
         )}
@@ -678,6 +686,11 @@ const totalMinutosVistos = peliculasVistas.reduce(
         cerrarModalBienvenida={() => setModalBienvenidaAbierto(false)}
         onAutenticarUsuario={autenticarUsuario}
         errorAuth={errorAuth}
+        modalAccion={modalAccion}
+        cerrarModalAccion={() => setModalAccion(null)}
+        onCompletarPelicula={completarPelicula}
+        onAbandonarPelicula={abandonarPelicula}
+        procesando={procesando}
       />
     </div>
   );

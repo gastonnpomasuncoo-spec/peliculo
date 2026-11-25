@@ -13,6 +13,8 @@ function ProfileView({
   onEliminarPelicula,
   onAbrirConfiguracionFoto,
   onSeleccionarPelicula,
+  onSolicitarCompletar,
+  onSolicitarAbandonar,
   procesando,
 }) {
   const [mostrarTodoHistorial, setMostrarTodoHistorial] = useState(false);
@@ -25,7 +27,7 @@ function ProfileView({
 
   return (
     <section className="view-container">
-      {/* CABECERA DE PERFIL: AVATAR + NOMBRE/NIVEL A LA IZQUIERDA | ESTADÍSTICAS A LA DERECHA */}
+      {/* CABECERA DE PERFIL */}
       <div className="profile-header">
         <div className="profile-header-left">
           <div
@@ -69,7 +71,7 @@ function ProfileView({
           </div>
         </div>
 
-        {/* Bloque de estadísticas estilo referencia (arriba a la derecha) */}
+        {/* Estadísticas arriba a la derecha */}
         <div className="profile-stats-bar">
           <div className="profile-stat-item">
             <span className="profile-stat-number">{nivelInfo.totalVistas}</span>
@@ -88,28 +90,47 @@ function ProfileView({
         </div>
       </div>
 
-      {/* ZONA CENTRAL: MESA DE LUZ (3x160px) A LA IZQUIERDA + PROGRESO DE NIVEL A LA DERECHA */}
+      {/* ZONA CENTRAL: MESA DE LUZ CON BOTONES VISTA/DESECHAR + PROGRESO DE NIVEL */}
       <div className="profile-middle-grid">
         <div className="profile-mesa-block">
           <div className="profile-mini-cards">
             {[0, 1, 2].map((idx) => {
               const peli = mesaDeLuz[idx];
               return peli ? (
-                <div
-                  key={peli.id}
-                  className="profile-mini-poster-card"
-                  onClick={() => onSeleccionarPelicula && onSeleccionarPelicula(peli)}
-                  title={`Ver ficha de ${peli.titulo}`}
-                >
-                  <img
-                    src={peli.poster || generarPosterRespaldo(peli.titulo)}
-                    alt={peli.titulo}
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = generarPosterRespaldo(peli.titulo);
-                    }}
-                  />
+                <div key={peli.id} className="profile-mini-poster-card">
+                  <div
+                    className="profile-mini-poster-img-wrap"
+                    onClick={() => onSeleccionarPelicula && onSeleccionarPelicula(peli)}
+                    title={`Ver ficha de ${peli.titulo}`}
+                  >
+                    <img
+                      src={peli.poster || generarPosterRespaldo(peli.titulo)}
+                      alt={peli.titulo}
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = generarPosterRespaldo(peli.titulo);
+                      }}
+                    />
+                  </div>
+                  <div className="profile-mini-actions">
+                    <button
+                      type="button"
+                      className="btn-accent btn-mini-profile"
+                      disabled={procesando}
+                      onClick={() => onSolicitarCompletar && onSolicitarCompletar(peli)}
+                    >
+                      ✓ ¡La vi!
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-outline-danger btn-mini-profile"
+                      disabled={procesando}
+                      onClick={() => onSolicitarAbandonar && onSolicitarAbandonar(peli)}
+                    >
+                      ✕ Desechar
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div key={idx} className="profile-mini-poster-empty">
@@ -153,7 +174,7 @@ function ProfileView({
         </div>
       </div>
 
-      {/* BARRA DE PROGRESO DE ESCALA EVIDENCIANDO LOS ESPACIOS ENTRE NIVELES */}
+      {/* BARRA DE PROGRESO DE ESCALA */}
       <div className="escala-progreso-section">
         <div className="escala-header-row">
           <h2 className="section-title">Progreso en la Escala de Niveles</h2>
@@ -197,7 +218,7 @@ function ProfileView({
         </div>
       </div>
 
-      {/* HISTORIAL CON BOTÓN "VER MÁS" */}
+      {/* HISTORIAL CON BOTÓN VER MÁS */}
       <div className="historial-section">
         <h2 className="section-title">
           Historial (Proyectadas y Abandonadas) ({historialPeliculas.length})
