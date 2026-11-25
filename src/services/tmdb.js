@@ -1,3 +1,4 @@
+import { obtenerDetalleCompletoPelicula, obtenerKeywordsTMDB } from './services/tmdb';
 const RAW_TMDB_KEY = import.meta.env.VITE_TMDB_API_KEY?.trim() || '';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 export const TMDB_IMG_BASE = 'https://image.tmdb.org/t/p/w500';
@@ -469,16 +470,18 @@ export async function obtenerDetalleCompletoPelicula(pelicula) {
       ...respaldo,
       ...pelicula,
       duracion: Number(pelicula.duracion) || respaldo?.duracion || 124,
+      keywords: Array.isArray(pelicula.keywords) ? pelicula.keywords : [],
     };
   }
 
   try {
     const data = await fetchTMDB(
-      `/movie/${pelicula.tmdbId}?language=es-ES&append_to_response=credits`
+      `/movie/${pelicula.tmdbId}?language=es-ES&append_to_response=credits,keywords`
     );
     const directorObj = data.credits?.crew?.find((c) => c.job === 'Director');
     const actores = (data.credits?.cast || []).slice(0, 6).map((a) => a.name).join(', ');
     const generosTexto = (data.genres || []).map((g) => g.name).join(' / ');
+    const keywords = (data.keywords?.keywords || []).map((k) => k.name.toLowerCase());
 
     return {
       ...pelicula,
@@ -487,8 +490,22 @@ export async function obtenerDetalleCompletoPelicula(pelicula) {
       director: directorObj ? directorObj.name : pelicula.director || 'No especificado',
       cast: actores || pelicula.cast || 'No especificado',
       sinopsis: data.overview || pelicula.sinopsis || 'Sin descripción disponible.',
+      keywords,
     };
   } catch {
-    return pelicula;
+    return {
+      ...pelicula,
+      keywords: Array.isArray(pelicula.keywords) ? pelicula.keywords : [],
+    };
+  }
+}
+
+export async function obtenerKeywordsTMDB(tmdbId) {
+  if (!tieneClaveTMDB || !tmdbId) return [];
+  try {
+    const data = await fetchTMDB(`/movie/${tmdbId}/keywords`);
+    return (data.keywords || []).map((k) => k.name.toLowerCase());
+  } catch {
+    return [];
   }
 }

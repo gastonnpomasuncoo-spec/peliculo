@@ -170,18 +170,19 @@ function HomeView({
         )}
       </div>
 
-      {/* MUEBLE LITERAL: LA MESA DE LUZ CON PELÍCULAS ARRIBA Y CAJÓN OCULTO DEBAJO */}
+{/* MUEBLE LITERAL: LA MESA DE LUZ SIN RECUADRO GRIS, CON LUZ CENITAL + LUZ DE RELLENO */}
       <div className="nightstand-furniture">
-        {/* Halo suave de luz cálida superior */}
+        {/* Luz cenital cálida intensa desde arriba + luz de relleno ambiental de fondo */}
         <div className="nightstand-lamp-glow" aria-hidden="true" />
+        <div className="nightstand-ambient-fill" aria-hidden="true" />
 
-        {/* SUPERFICIE SUPERIOR DE LA MESA DE LUZ */}
+        {/* SUPERFICIE ABIERTA SOBRE LA MESA DE LUZ (SIN RECUADRO TIPO TV) */}
         <div className="nightstand-top-stage">
           {!moodSeleccionado ? (
             <div className="mood-selector-stage">
               <h2 className="mood-question-title">¿Qué quieres ver hoy?</h2>
               <p className="mood-question-subtitle">
-                Elegí cómo te sentís ahora y te traemos hasta 3 películas de tus pendientes sobre la mesa.
+                Elegí la vibra que buscás ahora y te traemos hasta 3 películas de tus pendientes sobre la mesa.
               </p>
 
               <div className="mood-options-grid">
@@ -189,7 +190,7 @@ function HomeView({
                   <button
                     key={m.id}
                     type="button"
-                    className={`mood-choice-card ${m.id === 'todas' ? 'mood-choice-all' : ''}`}
+                    className={`mood-choice-card ${m.id === 'olvidadas' ? 'mood-choice-all' : ''}`}
                     onClick={() => elegirMood(m.id)}
                   >
                     <span className="mood-choice-title">{m.nombre}</span>
@@ -198,19 +199,19 @@ function HomeView({
                 ))}
               </div>
             </div>
-          ) : peliculasEnMesa.length === 0 && pendientes.length > 0 && moodSeleccionado !== 'todas' ? (
+          ) : peliculasEnMesa.length === 0 && pendientes.length > 0 && moodSeleccionado !== 'olvidadas' ? (
             <div className="mood-empty-match">
-              <h3>No tenés pendientes guardadas para "{moodActualObj?.nombre}"</h3>
+              <h3>No tenés pendientes guardadas con la vibra "{moodActualObj?.nombre}"</h3>
               <p>
-                Podés cambiar a otro mood, ver tus 3 películas más viejas o sumar nuevas desde Descubrir.
+                Podés cambiar de mood arriba, mirar tus películas olvidadas o sumar nuevas desde Descubrir.
               </p>
               <div className="mood-empty-actions">
                 <button
                   type="button"
                   className="btn-accent"
-                  onClick={() => elegirMood('todas')}
+                  onClick={() => elegirMood('olvidadas')}
                 >
-                  Ver las 3 más viejas (Todas)
+                  Ver Olvidadas
                 </button>
                 <button type="button" className="btn-secondary" onClick={irADescubrir}>
                   Ir a Descubrir →
@@ -264,7 +265,6 @@ function HomeView({
               onClick={intentarAbrirCajon}
               aria-label="Intentar abrir el Cajón Oculto"
             >
-              {/* Manija/ranura calada estilo mesa de luz de madera */}
               <div className="drawer-handle-notch" aria-hidden="true" />
 
               <div className="drawer-front-content">
@@ -282,7 +282,6 @@ function HomeView({
             </button>
           </div>
 
-          {/* Mensaje suave que aparece después de que el cajón no cede */}
           <div
             className={`cajon-smooth-reveal ${mensajeCajonVisible ? 'visible' : ''}`}
             aria-live="polite"
@@ -307,7 +306,7 @@ function HomeView({
           </div>
         </div>
 
-        {/* PATAS / ZÓCALO DEL MUEBLE */}
+        {/* PATAS DEL MUEBLE */}
         <div className="nightstand-legs" aria-hidden="true">
           <div className="nightstand-leg" />
           <div className="nightstand-leg" />

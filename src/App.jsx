@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   signInAnonymously,
   onAuthStateChanged,
@@ -173,6 +173,34 @@ function App() {
   const peliculasPendientes = peliculas.filter(
     (p) => p.estado === 'mesa_de_luz' || p.estado === 'en_espera'
   );
+  const idsKeywordsConsultadosRef = useRef(new Set());
+
+  useEffect(() => {
+    const pendientesSinKeywords = peliculasPendientes.filter(
+      (p) =>
+        p.tmdbId &&
+        !Array.isArray(p.keywords) &&
+        !idsKeywordsConsultadosRef.current.has(p.id)
+    );
+
+    if (pendientesSinKeywords.length === 0) return;
+
+    pendientesSinKeywords.forEach(async (peli) => {
+      idsKeywordsConsultadosRef.current.add(peli.id);
+      const keywords = await obtenerKeywordsTMDB(peli.tmdbId);
+      if (firebaseListo && db) {
+        try {
+          await updateDoc(doc(db, 'peliculas', peli.id), { keywords });
+        } catch {
+          // Si falla la escritura, no frena la interfaz
+        }
+      } else {
+        setPeliculas((prev) =>
+          prev.map((item) => (item.id === peli.id ? { ...item, keywords } : item))
+        );
+      }
+    });
+  }, [peliculasPendientes]);
   const mesaDeLuz = peliculas.filter((p) => p.estado === 'mesa_de_luz').slice(0, 3);
   const cajonDeEspera = peliculas.filter((p) => p.estado === 'en_espera');
   const peliculasVistas = peliculas.filter((p) => p.estado === 'vista');
@@ -307,7 +335,7 @@ function App() {
     try {
       const fichaCompleta = await obtenerDetalleCompletoPelicula(datosPelicula);
       const estadoInicial = mesaDeLuz.length < 3 ? 'mesa_de_luz' : 'en_espera';
-      const nuevoDoc = {
+const nuevoDoc = {
         uid: usuario.uid,
         tmdbId: Number(fichaCompleta.tmdbId || datosPelicula.tmdbId || Date.now()),
         titulo: fichaCompleta.titulo,
@@ -317,6 +345,7 @@ function App() {
         director: fichaCompleta.director || 'Director destacado',
         cast: fichaCompleta.cast || 'Reparto principal',
         sinopsis: fichaCompleta.sinopsis || '',
+        keywords: Array.isArray(fichaCompleta.keywords) ? fichaCompleta.keywords : [],
         poster: fichaCompleta.poster,
         estado: estadoInicial,
         puntaje: 0,

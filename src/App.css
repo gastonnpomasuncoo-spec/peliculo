@@ -266,38 +266,86 @@ h1, h2, h3, h4, .brand-logo {
   line-height: 1.35;
 }
 
-/* MUEBLE LITERAL: LA MESA DE LUZ + CAJÓN OCULTO DEBAJO */
+/* MUEBLE LITERAL: LA MESA DE LUZ ABIERTA ARRIBA (SIN RECUADRO TV) + ILUMINACIÓN DE VELADOR */
 .nightstand-furniture {
   position: relative;
   max-width: 860px;
-  margin: 1.4rem auto 3.5rem;
+  margin: 1.6rem auto 3.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
+/* Luz cenital cálida intensificada (simula el haz del velador cayendo sobre la mesa) */
 .nightstand-lamp-glow {
   position: absolute;
-  top: -28px;
+  top: -55px;
   left: 50%;
   transform: translateX(-50%);
-  width: 90%;
-  height: 190px;
-  background: radial-gradient(ellipse at top, rgba(234, 179, 8, 0.15) 0%, transparent 72%);
+  width: 96%;
+  height: 430px;
+  background: radial-gradient(
+    ellipse 62% 70% at 50% 0%,
+    rgba(234, 179, 8, 0.34) 0%,
+    rgba(234, 179, 8, 0.16) 42%,
+    rgba(234, 179, 8, 0.04) 72%,
+    transparent 100%
+  );
+  filter: blur(16px);
   pointer-events: none;
   z-index: 0;
 }
 
+/* Luz de relleno ambiental en el fondo para separar bien las películas y opciones del #26262D */
+.nightstand-ambient-fill {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 112%;
+  height: 480px;
+  background: radial-gradient(
+    ellipse 68% 60% at 50% 55%,
+    rgba(244, 244, 244, 0.09) 0%,
+    rgba(234, 179, 8, 0.08) 45%,
+    transparent 82%
+  );
+  filter: blur(26px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Superficie abierta: sin fondo gris ni bordes laterales */
 .nightstand-top-stage {
   position: relative;
   z-index: 2;
   width: 100%;
-  padding: 1.8rem 1.8rem 1.35rem;
-  border-radius: 14px 14px 0 0;
-  background: linear-gradient(180deg, rgba(18, 16, 21, 0.35) 0%, rgba(18, 16, 21, 0.72) 100%);
-  border-top: 1px solid rgba(234, 179, 8, 0.18);
-  border-left: 1px solid rgba(255, 255, 255, 0.06);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 1.6rem 1.2rem 1.45rem;
+  background: transparent;
+  border: none;
+}
+
+/* Tapa de madera superior iluminada por el haz del velador */
+.nightstand-tabletop {
+  position: relative;
+  z-index: 4;
+  width: calc(100% + 22px);
+  height: 24px;
+  border-radius: 5px 5px 3px 3px;
+  background:
+    radial-gradient(ellipse 70% 100% at 50% 0%, rgba(234, 179, 8, 0.28) 0%, transparent 75%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 0px,
+      rgba(255, 255, 255, 0.03) 28px,
+      rgba(0, 0, 0, 0.08) 28px,
+      rgba(0, 0, 0, 0.08) 56px
+    ),
+    linear-gradient(180deg, #6b4b36 0%, var(--wood-light) 45%, var(--wood-mid) 100%);
+  border-top: 1px solid rgba(255, 219, 130, 0.55);
+  box-shadow:
+    0 -8px 26px rgba(234, 179, 8, 0.16),
+    0 12px 26px rgba(0, 0, 0, 0.78);
 }
 
 /* Pantalla inicial de selección de Mood sobre la Mesa de Luz */
@@ -2030,4 +2078,11 @@ h1, h2, h3, h4, .brand-logo {
   .escala-node-min {
     font-size: 0.6rem;
   }
+  /* Realce sutil de contraste para los elementos apoyados sobre la Mesa de Luz */
+.nightstand-top-stage .movie-card,
+.nightstand-top-stage .mood-choice-card {
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.78),
+    0 0 22px rgba(234, 179, 8, 0.09);
+}
 }
